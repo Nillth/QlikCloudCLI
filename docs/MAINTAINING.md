@@ -72,7 +72,7 @@ Allow the release workflow to create commits, tags, and GitHub Releases on `main
 
 ### First release and recovery
 
-The initial source version is `2.0.0`. After configuration, manually dispatch `schema-release.yml` with `publish_initial` enabled to publish the current version even when Qlik's schemas have not changed. Remove the first-release-pending wording from the root and consumer installation guides when the Gallery listing is actually available.
+The initial source version is `2.0.0`. After configuration, manually dispatch `schema-release.yml` with `publish_initial` enabled to publish the current version even when Qlik's schemas have not changed.
 
 If a run fails after creating a candidate, preserve its tag, draft release, and state. Correct the external configuration and rerun the workflow; the existing package is the retry source. Do not delete a tag, bump the version, or replace a ZIP merely to retry Gallery publication. If a Gallery version exists but does not match the release state, stop and investigate rather than overwrite it.
 

@@ -6,7 +6,7 @@ Use your own tenant hostname, secret provider, resource identifiers, and local f
 
 ## Install from the PowerShell Gallery
 
-The first public Gallery release is pending. After QlikCloudCLI is available in PSGallery, run this in Windows PowerShell:
+To install a published release from PSGallery, run this in Windows PowerShell:
 
 ```powershell
 Install-Module -Name QlikCloudCLI -Repository PSGallery -Scope CurrentUser

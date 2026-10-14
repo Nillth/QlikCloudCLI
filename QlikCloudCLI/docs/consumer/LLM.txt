@@ -70,8 +70,8 @@ Target Windows PowerShell 5.1 (Desktop), included with Windows. Run scripts with
 powershell.exe. Do not require users to install another PowerShell runtime.
 Gallery packages and ZIPs contain the compiled module and its dependencies.
 No compilation, development SDK, package restore or source checkout is needed.
-The first public Gallery release is pending. Once it is available, users who
-request installation can run Install-Module -Name QlikCloudCLI -Repository
+For a published Gallery release, users who request installation can run
+Install-Module -Name QlikCloudCLI -Repository
 PSGallery -Scope CurrentUser, then Import-Module QlikCloudCLI. Do not install
 or update modules as an incidental side effect of an ordinary generated script.
 For ZIP installation, extract the whole archive and preserve all files and the

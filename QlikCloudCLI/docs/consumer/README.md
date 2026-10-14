@@ -8,7 +8,7 @@ Use `Get-QCCollections` to list collections and `Get-QCCollections -CollectionId
 
 ## Install from the PowerShell Gallery
 
-The first public Gallery release is pending. Once QlikCloudCLI is available in PSGallery, install it for your Windows user:
+Install a published release from PSGallery for your Windows user:
 
 ```powershell
 Install-Module -Name QlikCloudCLI -Repository PSGallery -Scope CurrentUser

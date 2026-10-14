@@ -17,7 +17,7 @@ Use the [operator guide](QlikCloudCLI/docs/consumer/HOW-TO.md) for installation,
 
 ## Install
 
-The first public Gallery release is pending. Once QlikCloudCLI is available in the PowerShell Gallery:
+Published releases can be installed from the PowerShell Gallery:
 
 ```powershell
 Install-Module -Name QlikCloudCLI -Repository PSGallery -Scope CurrentUser
