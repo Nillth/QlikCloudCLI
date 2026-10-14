@@ -41,7 +41,7 @@ Schema snapshots remain upstream Qlik content. Keep their provenance and [third-
 
 ## GitHub Actions
 
-`ci.yml` builds and tests pushes and pull requests on a hosted Windows runner with read-only repository permissions. It has no Gallery secret and does not sign or publish packages.
+`ci.yml` builds and tests pushes, pull requests, and manual dispatches on a hosted Windows runner with read-only repository permissions. It has no Gallery secret and does not sign or publish packages. Manual dispatch can validate the saved snapshot after an automated release commit, because commits pushed with the workflow token do not trigger another push workflow.
 
 `schema-release.yml` checks the tenant REST ZIP for schema changes each Monday at 03:23 UTC and supports manual dispatch. Its inventory includes nested namespace paths, so APIs such as `apps` and `analytics/apps` remain distinct. Releases run only for `Nillth/QlikCloudCLI` on `main`, with one release run at a time. An unchanged snapshot creates no version, tag, or package publication. Changed snapshots must pass all release checks before the patch version is advanced.
 
