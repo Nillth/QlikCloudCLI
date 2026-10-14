@@ -62,7 +62,7 @@ function Invoke-ArtifactSigning {
         $request.Content.Headers.ContentLength = $inputFile.Length
         $response = $HttpClient.SendAsync($request, [Net.Http.HttpCompletionOption]::ResponseHeadersRead, $timeout.Token).GetAwaiter().GetResult()
         if ($response.StatusCode -ne [Net.HttpStatusCode]::OK) {
-            $failure = 'Artifact signing service did not return a successful binary response.'
+            $failure = 'Artifact signing service did not return a successful binary response (HTTP {0}).' -f [int] $response.StatusCode
             throw $failure
         }
         if ($null -eq $response.Content -or $null -eq $response.Content.Headers.ContentType -or

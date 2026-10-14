@@ -61,7 +61,7 @@ $unsigned = [byte[]] (1, 0, 128, 255, 2)
 $endpoint = 'https://signer.invalid/private-endpoint'
 $token = 'test-token-that-must-not-appear-in-errors'
 function Assert-Test([bool] $Condition, [string] $Message) { if (-not $Condition) { throw $Message }; $script:passed++ }
-function Invoke-TestCase([SigningTestHandler] $Handler, [bool] $ExpectFailure, [string] $Url = $endpoint) {
+function Invoke-TestCase([SigningTestHandler] $Handler, [bool] $ExpectFailure, [string] $Url = $endpoint, [int] $ExpectedStatusCode = 0) {
     [IO.File]::WriteAllBytes($inputPath, $unsigned)
     $client = [Net.Http.HttpClient]::new($Handler, $true)
     $failure = $null
@@ -75,6 +75,9 @@ function Invoke-TestCase([SigningTestHandler] $Handler, [bool] $ExpectFailure, [
         $errorText = ($failure | Out-String) + $failure.Exception.ToString()
         Assert-Test (-not $errorText.Contains($endpoint) -and -not $errorText.Contains($token) -and -not $errorText.Contains('private response detail')) 'Errors must not disclose credentials, endpoint or response body.'
         Assert-Test ($null -eq $failure.Exception.InnerException) 'Signing errors must not retain a sensitive inner exception.'
+        if ($ExpectedStatusCode -gt 0) {
+            Assert-Test ($failure.Exception.Message.Contains("(HTTP $ExpectedStatusCode)")) 'HTTP signing failures must expose their numeric status code.'
+        }
         Assert-Test ([Convert]::ToHexString([IO.File]::ReadAllBytes($inputPath)) -ceq [Convert]::ToHexString($unsigned)) 'Failed signing must preserve the original file.'
     }
     Assert-Test (@(Get-ChildItem -LiteralPath $temporary -Filter '.signing-*.tmp').Count -eq 0) 'Temporary signing responses must be removed.'
@@ -92,7 +95,7 @@ try {
     $failed = [SigningTestHandler]::new()
     $failed.Status = [Net.HttpStatusCode]::Unauthorized
     $failed.ResponseBytes = [Text.Encoding]::UTF8.GetBytes("private response detail $endpoint $token")
-    Invoke-TestCase $failed $true
+    Invoke-TestCase $failed $true -ExpectedStatusCode 401
 
     $redirect = [SigningTestHandler]::new()
     $redirect.Status = [Net.HttpStatusCode]::TemporaryRedirect
