@@ -8,6 +8,38 @@
       "sha256": "191c7e67fb999ce5b386d9d3a8fa32e2930ad2ec94371efdeab27e5dd50e84f7"
     },
     {
+      "api": "alerting/sharing-tasks",
+      "sha256": "033e03b2a469e3dbba9a6236da2ed14f2010884791ef1437ee5a8e4726eaae2a"
+    },
+    {
+      "api": "analytics/apps",
+      "sha256": "3090655b7ff1841892a6a6660a4c166572de5cdc3da8fd37b343d7675e406ff6"
+    },
+    {
+      "api": "analytics/change-stores",
+      "sha256": "add7f230ac553cbd714671578c3f2085da1569a5947a6e18daa9486b885f286d"
+    },
+    {
+      "api": "analytics/discovery-agent/adaptive-cards",
+      "sha256": "7e9ad3b99bf099f06405aa670da08fc163d34a0deddd84e227d8ea266546a852"
+    },
+    {
+      "api": "analytics/odag-apps",
+      "sha256": "b8b5de1f879f7dcf4c0abd98a53d1533611abc2287c53fb114ba03660a259e1f"
+    },
+    {
+      "api": "analytics/odag-links",
+      "sha256": "1d03f6e98f85b998987d14e9ce4bcb519762122f1793d0709cd6bd6fd343f0df"
+    },
+    {
+      "api": "analytics/odag-requests",
+      "sha256": "d0deae0425d0804960b4756172a79897ae27f2ca75b606574668e8d9d0edcf58"
+    },
+    {
+      "api": "analytics/odag-settings",
+      "sha256": "230267cbb6b62b1252ce4d83c0ec11be38b3abf5ee36eb499b6cc56b7c6805e1"
+    },
+    {
       "api": "api-keys",
       "sha256": "11bd469b7f31d8359911819c9263a635c047d437265d6102904aa5f3ca2451da"
     },
@@ -17,7 +49,7 @@
     },
     {
       "api": "assistants",
-      "sha256": "9340a1cb0ce82bd5d424e75831ab54fc7b239467be83d1130c98f0d56f0d08b0"
+      "sha256": "fb5f9fef40610cec4171aa72f06b9638273a47e754507a3e0a08584d85b9b415"
     },
     {
       "api": "audits",
@@ -60,8 +92,20 @@
       "sha256": "99cab3c8209c26abef5c5359f615a3738dbbd176742cb18642d458622c46785d"
     },
     {
+      "api": "connectivity/direct-access-agents",
+      "sha256": "340eb2eb78cfd5929d9568624c4a39d0e19b284fac739d68f9d5d03aa4c007f4"
+    },
+    {
       "api": "consumption",
       "sha256": "cfdf0d2a8508aa5254c598b80db18d2e77449f60ffdf41e0c52a9e54941ccf9d"
+    },
+    {
+      "api": "core/auth-settings",
+      "sha256": "2b8423e1a6a938b536e03838163c9ef1284a83d0ff57d3f4bc7ba9b4e43a8545"
+    },
+    {
+      "api": "core/ip-policies",
+      "sha256": "82bb984938ca7b94cf989584c731c3829368c8682e8d82bc5c79fa9b3d0af301"
     },
     {
       "api": "csp-origins",
@@ -90,6 +134,22 @@
     {
       "api": "data-files",
       "sha256": "96a98402368159180c2ca6223c65c0bf66c3e4f89e7a01a7cee0ae6a4c5a5449"
+    },
+    {
+      "api": "data-governance/data-products",
+      "sha256": "97abd4225d0cc8b7d63507ff0a344b8b612a66a69f65acee91abcfe0a0c88c7d"
+    },
+    {
+      "api": "data-governance/data-qualities",
+      "sha256": "4a3fb0c0a9033b4ae00617e5cb0009f7df3d4d485cd2beefc8fa038fb775cfe4"
+    },
+    {
+      "api": "data-governance/semantic-types",
+      "sha256": "3b9218177e18d796c86e0cccce2269d89371d8c1a0d745104e7568734daafb85"
+    },
+    {
+      "api": "data-governance/trust-scores",
+      "sha256": "e5972cbd6fd09de120796fd1a635270a79c9e963bcdf9fb02a9c5ac3b5bcf5c2"
     },
     {
       "api": "data-qualities",
@@ -141,7 +201,7 @@
     },
     {
       "api": "knowledgebases",
-      "sha256": "a0dfc2aa529986e9cf4ba2475acc88cb7a259e2549dd282ba8955bcadee42450"
+      "sha256": "7e15da1008eb5210847d0ffb0689cee421e20e040c184eb315aa0ee9eb0839f9"
     },
     {
       "api": "licenses",
@@ -208,6 +268,10 @@
       "sha256": "922ea1c5f06b11a089d0b9f3f5ef58f745952bcf266e59e1eb97022d7bf8e8b0"
     },
     {
+      "api": "scheduling/tasks",
+      "sha256": "239fcc793e5e0dae8f2515060448f8a2183f48a72164f03c83bdab71a8e3a35b"
+    },
+    {
       "api": "sharing-tasks",
       "sha256": "5129e4d5f5e0b11556250ced942f90453fec635e3687f5cd36ae192890dcb2ce"
     },
@@ -258,12 +322,56 @@
     {
       "api": "webhooks",
       "sha256": "067e4563f5f4030f662f7231a10333efe525028f21643929230a150fbf90673f"
+    },
+    {
+      "api": "workflows/automation-connections",
+      "sha256": "dba359daa3a80886f270aa7cc1180468d4c4f0592d27f21a70c8550c0bfa8fc6"
+    },
+    {
+      "api": "workflows/automation-connectors",
+      "sha256": "356babb47a2701e36e447feea8e5aece0826ddb25b10cabf918fee04a3496642"
+    },
+    {
+      "api": "workflows/automations",
+      "sha256": "13525c5d1de5e49f6b424e9184e72231a1c71f44d720b73ee820355f9dc62f8b"
     }
   ],
   "files": [
     {
       "path": ".well-known.json",
       "sha256": "191c7e67fb999ce5b386d9d3a8fa32e2930ad2ec94371efdeab27e5dd50e84f7"
+    },
+    {
+      "path": "alerting/sharing-tasks.json",
+      "sha256": "033e03b2a469e3dbba9a6236da2ed14f2010884791ef1437ee5a8e4726eaae2a"
+    },
+    {
+      "path": "analytics/apps.json",
+      "sha256": "3090655b7ff1841892a6a6660a4c166572de5cdc3da8fd37b343d7675e406ff6"
+    },
+    {
+      "path": "analytics/change-stores.json",
+      "sha256": "add7f230ac553cbd714671578c3f2085da1569a5947a6e18daa9486b885f286d"
+    },
+    {
+      "path": "analytics/discovery-agent/adaptive-cards.json",
+      "sha256": "7e9ad3b99bf099f06405aa670da08fc163d34a0deddd84e227d8ea266546a852"
+    },
+    {
+      "path": "analytics/odag-apps.json",
+      "sha256": "b8b5de1f879f7dcf4c0abd98a53d1533611abc2287c53fb114ba03660a259e1f"
+    },
+    {
+      "path": "analytics/odag-links.json",
+      "sha256": "1d03f6e98f85b998987d14e9ce4bcb519762122f1793d0709cd6bd6fd343f0df"
+    },
+    {
+      "path": "analytics/odag-requests.json",
+      "sha256": "d0deae0425d0804960b4756172a79897ae27f2ca75b606574668e8d9d0edcf58"
+    },
+    {
+      "path": "analytics/odag-settings.json",
+      "sha256": "230267cbb6b62b1252ce4d83c0ec11be38b3abf5ee36eb499b6cc56b7c6805e1"
     },
     {
       "path": "api-keys.json",
@@ -275,7 +383,7 @@
     },
     {
       "path": "assistants.json",
-      "sha256": "9340a1cb0ce82bd5d424e75831ab54fc7b239467be83d1130c98f0d56f0d08b0"
+      "sha256": "fb5f9fef40610cec4171aa72f06b9638273a47e754507a3e0a08584d85b9b415"
     },
     {
       "path": "audits.json",
@@ -318,8 +426,20 @@
       "sha256": "99cab3c8209c26abef5c5359f615a3738dbbd176742cb18642d458622c46785d"
     },
     {
+      "path": "connectivity/direct-access-agents.json",
+      "sha256": "340eb2eb78cfd5929d9568624c4a39d0e19b284fac739d68f9d5d03aa4c007f4"
+    },
+    {
       "path": "consumption.json",
       "sha256": "cfdf0d2a8508aa5254c598b80db18d2e77449f60ffdf41e0c52a9e54941ccf9d"
+    },
+    {
+      "path": "core/auth-settings.json",
+      "sha256": "2b8423e1a6a938b536e03838163c9ef1284a83d0ff57d3f4bc7ba9b4e43a8545"
+    },
+    {
+      "path": "core/ip-policies.json",
+      "sha256": "82bb984938ca7b94cf989584c731c3829368c8682e8d82bc5c79fa9b3d0af301"
     },
     {
       "path": "csp-origins.json",
@@ -348,6 +468,22 @@
     {
       "path": "data-files.json",
       "sha256": "96a98402368159180c2ca6223c65c0bf66c3e4f89e7a01a7cee0ae6a4c5a5449"
+    },
+    {
+      "path": "data-governance/data-products.json",
+      "sha256": "97abd4225d0cc8b7d63507ff0a344b8b612a66a69f65acee91abcfe0a0c88c7d"
+    },
+    {
+      "path": "data-governance/data-qualities.json",
+      "sha256": "4a3fb0c0a9033b4ae00617e5cb0009f7df3d4d485cd2beefc8fa038fb775cfe4"
+    },
+    {
+      "path": "data-governance/semantic-types.json",
+      "sha256": "3b9218177e18d796c86e0cccce2269d89371d8c1a0d745104e7568734daafb85"
+    },
+    {
+      "path": "data-governance/trust-scores.json",
+      "sha256": "e5972cbd6fd09de120796fd1a635270a79c9e963bcdf9fb02a9c5ac3b5bcf5c2"
     },
     {
       "path": "data-qualities.json",
@@ -399,7 +535,7 @@
     },
     {
       "path": "knowledgebases.json",
-      "sha256": "a0dfc2aa529986e9cf4ba2475acc88cb7a259e2549dd282ba8955bcadee42450"
+      "sha256": "7e15da1008eb5210847d0ffb0689cee421e20e040c184eb315aa0ee9eb0839f9"
     },
     {
       "path": "licenses.json",
@@ -466,6 +602,10 @@
       "sha256": "922ea1c5f06b11a089d0b9f3f5ef58f745952bcf266e59e1eb97022d7bf8e8b0"
     },
     {
+      "path": "scheduling/tasks.json",
+      "sha256": "239fcc793e5e0dae8f2515060448f8a2183f48a72164f03c83bdab71a8e3a35b"
+    },
+    {
       "path": "sharing-tasks.json",
       "sha256": "5129e4d5f5e0b11556250ced942f90453fec635e3687f5cd36ae192890dcb2ce"
     },
@@ -516,6 +656,18 @@
     {
       "path": "webhooks.json",
       "sha256": "067e4563f5f4030f662f7231a10333efe525028f21643929230a150fbf90673f"
+    },
+    {
+      "path": "workflows/automation-connections.json",
+      "sha256": "dba359daa3a80886f270aa7cc1180468d4c4f0592d27f21a70c8550c0bfa8fc6"
+    },
+    {
+      "path": "workflows/automation-connectors.json",
+      "sha256": "356babb47a2701e36e447feea8e5aece0826ddb25b10cabf918fee04a3496642"
+    },
+    {
+      "path": "workflows/automations.json",
+      "sha256": "13525c5d1de5e49f6b424e9184e72231a1c71f44d720b73ee820355f9dc62f8b"
     }
   ]
 }
