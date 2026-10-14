@@ -1,0 +1,65 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloud", "QlikCloud\QlikCloud.csproj", "{D79AA690-868D-40CA-A325-C6405AE0D767}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QlikCloudCLI", "QlikCloudCLI", "{C31F99E9-5C60-43CC-9C7C-8E1BE6563D5A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloudCLI", "QlikCloudCLI\src\QlikCloudCLI.csproj", "{6EB7D09D-6367-4120-9D51-794A64420AFE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DEF93C4B-3D5E-4B17-A2AF-82244B6301AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloud.Generator", "tools\QlikCloud.Generator\QlikCloud.Generator.csproj", "{3570744F-E27E-46E8-9946-D0B3CE26E7B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloudCLI.Generator", "tools\QlikCloudCLI.Generator\QlikCloudCLI.Generator.csproj", "{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C07344D5-C31F-49E4-B82A-F2FCFEE66888}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloud.Generator.Tests", "tests\QlikCloud.Generator.Tests\QlikCloud.Generator.Tests.csproj", "{7684D56B-CC6A-44A9-84D7-619D7FC9391C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikCloudCLI.Generator.Tests", "tests\QlikCloudCLI.Generator.Tests\QlikCloudCLI.Generator.Tests.csproj", "{F5FFB44E-243A-4B53-AF60-C0538BAA88CA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D79AA690-868D-40CA-A325-C6405AE0D767}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D79AA690-868D-40CA-A325-C6405AE0D767}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D79AA690-868D-40CA-A325-C6405AE0D767}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D79AA690-868D-40CA-A325-C6405AE0D767}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EB7D09D-6367-4120-9D51-794A64420AFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6EB7D09D-6367-4120-9D51-794A64420AFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EB7D09D-6367-4120-9D51-794A64420AFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6EB7D09D-6367-4120-9D51-794A64420AFE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3570744F-E27E-46E8-9946-D0B3CE26E7B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3570744F-E27E-46E8-9946-D0B3CE26E7B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3570744F-E27E-46E8-9946-D0B3CE26E7B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3570744F-E27E-46E8-9946-D0B3CE26E7B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7684D56B-CC6A-44A9-84D7-619D7FC9391C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7684D56B-CC6A-44A9-84D7-619D7FC9391C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7684D56B-CC6A-44A9-84D7-619D7FC9391C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7684D56B-CC6A-44A9-84D7-619D7FC9391C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5FFB44E-243A-4B53-AF60-C0538BAA88CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5FFB44E-243A-4B53-AF60-C0538BAA88CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5FFB44E-243A-4B53-AF60-C0538BAA88CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5FFB44E-243A-4B53-AF60-C0538BAA88CA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6EB7D09D-6367-4120-9D51-794A64420AFE} = {C31F99E9-5C60-43CC-9C7C-8E1BE6563D5A}
+		{3570744F-E27E-46E8-9946-D0B3CE26E7B0} = {DEF93C4B-3D5E-4B17-A2AF-82244B6301AF}
+		{829E40EB-1657-45B2-A23E-CF6BE1C6D1EC} = {DEF93C4B-3D5E-4B17-A2AF-82244B6301AF}
+		{7684D56B-CC6A-44A9-84D7-619D7FC9391C} = {C07344D5-C31F-49E4-B82A-F2FCFEE66888}
+		{F5FFB44E-243A-4B53-AF60-C0538BAA88CA} = {C07344D5-C31F-49E4-B82A-F2FCFEE66888}
+	EndGlobalSection
+EndGlobal

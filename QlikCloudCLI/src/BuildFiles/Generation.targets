@@ -1,0 +1,55 @@
+<Project>
+  <PropertyGroup>
+    <QlikCloudCLIGeneratorProject Condition="'$(QlikCloudCLIGeneratorProject)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\tools\QlikCloudCLI.Generator\QlikCloudCLI.Generator.csproj'))</QlikCloudCLIGeneratorProject>
+    <_QlikCloudCLIGeneratedRoot>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)Generated\$(Configuration)\$(TargetFramework)'))))</_QlikCloudCLIGeneratedRoot>
+    <_QlikCloudCLIStageScript>$(MSBuildThisFileDirectory)Stage-Module.ps1</_QlikCloudCLIStageScript>
+    <_QlikCloudCLISignArgument Condition="'$(QlikCloudSignModule)' == 'true'">-Sign</_QlikCloudCLISignArgument>
+    <_QlikCloudCLIModuleFileList>$([System.IO.Path]::GetDirectoryName('$(_QlikCloudCLIGeneratedRoot)'))\qlikcloud-module-files.txt</_QlikCloudCLIModuleFileList>
+    <_QlikCloudCLIGeneratorArtifactsArgument Condition="'$(ArtifactsPath)' != ''">-property:UseArtifactsOutput=true -property:ArtifactsPath=&quot;$(ArtifactsPath)&quot;</_QlikCloudCLIGeneratorArtifactsArgument>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="$(_QlikCloudCLIGeneratedRoot)\**\*.cs" />
+    <Compile Include="$(_QlikCloudCLIGeneratedRoot)\src\**\*.cs" Condition="'$(DesignTimeBuild)' == 'true'" Link="Generated\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <Target Name="GenerateQlikCloudCmdlets" BeforeTargets="CoreCompile" DependsOnTargets="ResolveReferences"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <_QlikCloudAssembly Include="@(ReferencePath)" Condition="'%(ReferencePath.Filename)' == 'QlikCloud'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_QlikCloudAssemblyPath>@(_QlikCloudAssembly->'%(FullPath)')</_QlikCloudAssemblyPath>
+      <_QlikCloudInventoryPath>@(_QlikCloudAssembly->'%(RootDir)%(Directory)QlikCloud.operations.json')</_QlikCloudInventoryPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_QlikCloudAssemblyPath)')" Text="The built QlikCloud.dll reference is missing: $(_QlikCloudAssemblyPath)" />
+    <Error Condition="!Exists('$(_QlikCloudInventoryPath)')" Text="The QlikCloud operation inventory is missing: $(_QlikCloudInventoryPath). Build the referenced library with its mandatory generator." />
+    <!-- Resolve the actual output DLL rather than dotnet run's SDK-specific launch path. -->
+    <Exec Command="dotnet build &quot;$(QlikCloudCLIGeneratorProject)&quot; --configuration Release --nologo $(_QlikCloudCLIGeneratorArtifactsArgument)" />
+    <Exec Command="dotnet msbuild &quot;$(QlikCloudCLIGeneratorProject)&quot; -nologo -property:Configuration=Release $(_QlikCloudCLIGeneratorArtifactsArgument) -getProperty:TargetPath"
+          ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_QlikCloudCLIGeneratorAssembly" />
+    </Exec>
+    <Error Condition="!Exists('$(_QlikCloudCLIGeneratorAssembly)')" Text="The built QlikCloudCLI generator could not be located: $(_QlikCloudCLIGeneratorAssembly)" />
+    <Exec Command="dotnet &quot;$(_QlikCloudCLIGeneratorAssembly)&quot; generate --assembly &quot;$(_QlikCloudAssemblyPath)&quot; --client-manifest &quot;$(_QlikCloudInventoryPath)&quot; --output &quot;$(_QlikCloudCLIGeneratedRoot)&quot;" />
+    <ItemGroup>
+      <_QlikCloudCmdletSources Include="$(_QlikCloudCLIGeneratedRoot)\src\**\*.cs" />
+    </ItemGroup>
+    <Error Condition="'@(_QlikCloudCmdletSources)' == ''" Text="No generated QlikCloud PowerShell sources were produced." />
+    <Error Condition="!Exists('$(_QlikCloudCLIGeneratedRoot)\commands.json')" Text="The generated PowerShell command inventory is missing." />
+    <ItemGroup>
+      <Compile Remove="$(_QlikCloudCLIGeneratedRoot)\**\*.cs" />
+      <Compile Include="@(_QlikCloudCmdletSources)" Link="Generated\%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+  <Target Name="StageQlikCloudPowerShellModule" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(_QlikCloudInventoryPath)" DestinationFiles="$(TargetDir)QlikCloud.operations.json" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <_QlikCloudModuleFiles Include="$(TargetPath)" />
+      <_QlikCloudModuleFiles Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'System.Management.Automation'" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_QlikCloudCLIModuleFileList)"
+                      Lines="@(_QlikCloudModuleFiles->'%(FullPath)|%(DestinationSubDirectory)%(Filename)%(Extension)')"
+                      Overwrite="true" Encoding="UTF-8" />
+    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(_QlikCloudCLIStageScript)&quot; -BuildDirectory &quot;$(TargetDir).&quot; -GeneratedDirectory &quot;$(_QlikCloudCLIGeneratedRoot)&quot; -FileList &quot;$(_QlikCloudCLIModuleFileList)&quot; -ModuleVersion &quot;$(QlikCloudModuleVersion)&quot; $(_QlikCloudCLISignArgument)" />
+    <Message Importance="high" Text="QlikCloudCLI module: $(TargetDir)module\QlikCloudCLI\QlikCloudCLI.psd1" />
+  </Target>
+</Project>

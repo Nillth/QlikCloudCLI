@@ -1,0 +1,77 @@
+        private static readonly System.Lazy<Newtonsoft.Json.JsonSerializerSettings> Settings = new System.Lazy<Newtonsoft.Json.JsonSerializerSettings>(() =>
+        {
+            var settings = new Newtonsoft.Json.JsonSerializerSettings();
+            UpdateJsonSerializerSettings(settings);
+            return settings;
+        });
+        protected Newtonsoft.Json.JsonSerializerSettings JsonSerializerSettings { get { return Settings.Value; } }
+        static partial void UpdateJsonSerializerSettings(Newtonsoft.Json.JsonSerializerSettings settings);
+
+        protected struct ObjectResponseResult<T>
+        {
+            public T Object { get; private set; }
+            public string Text { get; private set; }
+            public System.Exception Exception { get; private set; }
+            public ObjectResponseResult(T value, string text, System.Exception exception = null) { Object = value; Text = text; Exception = exception; }
+        }
+        protected virtual async System.Threading.Tasks.Task<ObjectResponseResult<T>> ReadObjectResponseAsync<T>(System.Net.Http.HttpResponseMessage response, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, System.Threading.CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (response == null || response.Content == null) return new ObjectResponseResult<T>(default(T), string.Empty);
+            var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            try { return new ObjectResponseResult<T>(Newtonsoft.Json.JsonConvert.DeserializeObject<T>(text, JsonSerializerSettings), text); }
+            catch (Newtonsoft.Json.JsonException error) { throw new ApiException("Could not deserialize response as " + typeof(T).FullName, (int)response.StatusCode, text, headers, error); }
+        }
+
+        private static string WireValue(object value, string format = null)
+        {
+            if (value == null) return string.Empty;
+            if (value is bool) return (bool)value ? "true" : "false";
+            if (value is System.DateTimeOffset) return ((System.DateTimeOffset)value).ToString(format == "date" ? "yyyy-MM-dd" : "o", System.Globalization.CultureInfo.InvariantCulture);
+            if (value is System.DateTime) return ((System.DateTime)value).ToString(format == "date" ? "yyyy-MM-dd" : "o", System.Globalization.CultureInfo.InvariantCulture);
+            if (value.GetType().IsEnum)
+            {
+                var field = value.GetType().GetField(value.ToString());
+                var attributes = field == null ? new object[0] : field.GetCustomAttributes(typeof(System.Runtime.Serialization.EnumMemberAttribute), false);
+                return attributes.Length == 0 ? value.ToString() : ((System.Runtime.Serialization.EnumMemberAttribute)attributes[0]).Value;
+            }
+            if (!(value is string) && value is System.Collections.IEnumerable)
+            {
+                var items = new System.Collections.Generic.List<string>();
+                foreach (var item in (System.Collections.IEnumerable)value) items.Add(WireValue(item));
+                return string.Join(",", items);
+            }
+            return System.Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static void AddQuery(System.Collections.Generic.ICollection<string> query, string name, object value, string style, bool explode, string format = null)
+        {
+            if (value == null) return;
+            var encodedName = System.Uri.EscapeDataString(name);
+            if (value is string || value.GetType().IsValueType) { query.Add(encodedName + "=" + System.Uri.EscapeDataString(WireValue(value, format))); return; }
+            var token = Newtonsoft.Json.Linq.JToken.FromObject(value);
+            if (token is Newtonsoft.Json.Linq.JObject)
+            {
+                var pairs = new System.Collections.Generic.List<string>();
+                foreach (var property in ((Newtonsoft.Json.Linq.JObject)token).Properties())
+                {
+                    string text = property.Value.Type == Newtonsoft.Json.Linq.JTokenType.Null ? "" : property.Value.ToString();
+                    if (style == "deepObject") query.Add(System.Uri.EscapeDataString(name + "[" + property.Name + "]") + "=" + System.Uri.EscapeDataString(text));
+                    else if (explode) query.Add(System.Uri.EscapeDataString(property.Name) + "=" + System.Uri.EscapeDataString(text));
+                    else { pairs.Add(property.Name); pairs.Add(text); }
+                }
+                if (pairs.Count > 0) query.Add(encodedName + "=" + System.Uri.EscapeDataString(string.Join(",", pairs)));
+                return;
+            }
+            var values = new System.Collections.Generic.List<string>();
+            var sequence = value as System.Collections.IEnumerable;
+            if (sequence == null) { query.Add(encodedName + "=" + System.Uri.EscapeDataString(WireValue(value))); return; }
+            foreach (var item in sequence) values.Add(WireValue(item));
+            if (explode) foreach (var item in values) query.Add(encodedName + "=" + System.Uri.EscapeDataString(item));
+            else
+            {
+                string separator = style == "spaceDelimited" || style == "ssv" ? " " : style == "pipeDelimited" || style == "pipes" ? "|" : style == "tsv" ? "\t" : ",";
+                query.Add(encodedName + "=" + System.Uri.EscapeDataString(string.Join(separator, values)));
+            }
+        }

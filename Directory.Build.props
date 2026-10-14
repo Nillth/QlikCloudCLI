@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <Version Condition="'$(Version)' == ''">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)version.json')), '[0-9]+\.[0-9]+\.[0-9]+').Value)</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <QlikCloudModuleVersion>$(Version)</QlikCloudModuleVersion>
+    <Authors>Marc Collins</Authors>
+    <Company>NNet</Company>
+    <Copyright>Copyright (c) 2026 Marc Collins</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Nillth/QlikCloudCLI</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+</Project>

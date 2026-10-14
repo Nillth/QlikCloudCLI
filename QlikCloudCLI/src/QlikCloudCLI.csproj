@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Consumer contract: Windows PowerShell 5.1 and PowerShell Core share this binary. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>QlikCloudCLI</AssemblyName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <LangVersion>latest</LangVersion>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+    <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="All" />
+    <PackageReference Include="QlikSense.NetSDK" Version="16.11.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\QlikCloud\QlikCloud.csproj" />
+  </ItemGroup>
+  <Import Project="BuildFiles/Generation.targets" />
+</Project>

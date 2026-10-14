@@ -1,0 +1,64 @@
+<Project>
+  <!-- Custom C# generation is the only source of API clients for this library. -->
+  <PropertyGroup>
+    <QlikCloudGeneratorProject Condition="'$(QlikCloudGeneratorProject)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\tools\QlikCloud.Generator\QlikCloud.Generator.csproj'))</QlikCloudGeneratorProject>
+    <QlikCloudSchemaDirectory Condition="'$(QlikCloudSchemaDirectory)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\schemas\qlik-cloud'))</QlikCloudSchemaDirectory>
+    <QlikCloudGeneratedRoot Condition="'$(QlikCloudGeneratedRoot)' == ''">$(BaseIntermediateOutputPath)Generated\$(Configuration)\$(TargetFramework)</QlikCloudGeneratedRoot>
+    <!-- Command-line properties are immutable. Normalize into private properties used by every target. -->
+    <_QlikCloudGeneratedOutput>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(QlikCloudGeneratedRoot)'))))</_QlikCloudGeneratedOutput>
+    <_QlikCloudDefaultGeneratedRoot>$(BaseIntermediateOutputPath)Generated\$(Configuration)\$(TargetFramework)</_QlikCloudDefaultGeneratedRoot>
+    <_QlikCloudGeneratedOutput Condition="'$(QlikCloudGeneratedRoot)' == ''">$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(_QlikCloudDefaultGeneratedRoot)'))))</_QlikCloudGeneratedOutput>
+    <_QlikCloudSchemaInput>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(QlikCloudSchemaDirectory)'))))</_QlikCloudSchemaInput>
+    <_QlikCloudSchemaInput Condition="'$(QlikCloudSchemaDirectory)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\schemas\qlik-cloud'))</_QlikCloudSchemaInput>
+    <_QlikCloudIntermediateRoot>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))))</_QlikCloudIntermediateRoot>
+    <_QlikCloudIntermediatePrefix>$([MSBuild]::EnsureTrailingSlash('$(_QlikCloudIntermediateRoot)'))</_QlikCloudIntermediatePrefix>
+    <_QlikCloudOutputIsIntermediate>$([System.String]::Copy('$(_QlikCloudGeneratedOutput)').StartsWith('$(_QlikCloudIntermediatePrefix)', System.StringComparison.OrdinalIgnoreCase))</_QlikCloudOutputIsIntermediate>
+    <_QlikCloudGeneratorArtifactsArgument Condition="'$(ArtifactsPath)' != ''">-property:UseArtifactsOutput=true -property:ArtifactsPath=&quot;$(ArtifactsPath)&quot;</_QlikCloudGeneratorArtifactsArgument>
+  </PropertyGroup>
+
+  <!-- Exclude the retired sources even during project evaluation and IDE builds. -->
+  <ItemGroup>
+    <Compile Remove="src\*.cs;Clients\RestClientAPIClients.cs;$(_QlikCloudGeneratedOutput)\**\*.cs" />
+    <Compile Include="$(_QlikCloudGeneratedOutput)\src\*.cs" Condition="'$(DesignTimeBuild)' == 'true'" Link="Generated\src\%(Filename)%(Extension)" />
+    <Compile Include="$(_QlikCloudGeneratedOutput)\Clients\RestClientAPIClients.cs" Condition="'$(DesignTimeBuild)' == 'true' And Exists('$(_QlikCloudGeneratedOutput)\Clients\RestClientAPIClients.cs')" Link="Generated\Clients\RestClientAPIClients.cs" />
+  </ItemGroup>
+
+  <!-- Always reconcile the schema inventory, including removed schema files. The tool's own build is incremental. -->
+  <Target Name="GenerateQlikCloudSources"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(_QlikCloudOutputIsIntermediate)' != 'true'" Text="QlikCloudGeneratedRoot must be a child of the intermediate directory $(_QlikCloudIntermediateRoot). Generated clients cannot be placed in source directories." />
+    <Error Condition="!Exists('$(_QlikCloudSchemaInput)')" Text="QlikCloud schema directory not found: $(_QlikCloudSchemaInput). Run the generator refresh command explicitly before building." />
+    <Error Condition="!Exists('$(QlikCloudGeneratorProject)')" Text="QlikCloud generator project not found: $(QlikCloudGeneratorProject)" />
+    <!-- SDK 8 dotnet run does not resolve artifact-output launch paths correctly. -->
+    <Exec Command="dotnet build &quot;$(QlikCloudGeneratorProject)&quot; --configuration Release --nologo $(_QlikCloudGeneratorArtifactsArgument)" />
+    <Exec Command="dotnet msbuild &quot;$(QlikCloudGeneratorProject)&quot; -nologo -property:Configuration=Release $(_QlikCloudGeneratorArtifactsArgument) -getProperty:TargetPath"
+          ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_QlikCloudGeneratorAssembly" />
+    </Exec>
+    <Error Condition="!Exists('$(_QlikCloudGeneratorAssembly)')" Text="The built QlikCloud generator could not be located: $(_QlikCloudGeneratorAssembly)" />
+    <Exec Command="dotnet &quot;$(_QlikCloudGeneratorAssembly)&quot; generate --schemas &quot;$(_QlikCloudSchemaInput)&quot; --output &quot;$(_QlikCloudGeneratedOutput)&quot;" />
+  </Target>
+
+  <Target Name="IncludeQlikCloudGeneratedSources"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="GenerateQlikCloudSources"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="!Exists('$(_QlikCloudGeneratedOutput)\manifest.json')" Text="QlikCloud generated output manifest not found: $(_QlikCloudGeneratedOutput)\manifest.json" />
+    <Error Condition="!Exists('$(_QlikCloudGeneratedOutput)\Clients\RestClientAPIClients.cs')" Text="QlikCloud generated client facade not found: $(_QlikCloudGeneratedOutput)\Clients\RestClientAPIClients.cs" />
+    <ItemGroup>
+      <_QlikCloudGeneratedClients Include="$(_QlikCloudGeneratedOutput)\src\*.cs" />
+    </ItemGroup>
+    <Error Condition="'@(_QlikCloudGeneratedClients)' == ''" Text="No generated QlikCloud API client sources were found in $(_QlikCloudGeneratedOutput)\src." />
+    <ItemGroup>
+      <Compile Remove="src\*.cs;Clients\RestClientAPIClients.cs;$(_QlikCloudGeneratedOutput)\**\*.cs" />
+      <Compile Include="@(_QlikCloudGeneratedClients)" Link="Generated\src\%(Filename)%(Extension)" />
+      <Compile Include="$(_QlikCloudGeneratedOutput)\Clients\RestClientAPIClients.cs" Link="Generated\Clients\RestClientAPIClients.cs" />
+    </ItemGroup>
+  </Target>
+  <!-- Consumers generate against the exact inventory that produced this assembly. -->
+  <Target Name="CopyQlikCloudOperationInventory" AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(_QlikCloudGeneratedOutput)\manifest.json"
+          DestinationFiles="$(TargetDir)QlikCloud.operations.json" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

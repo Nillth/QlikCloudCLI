@@ -1,0 +1,718 @@
+QLIKCLOUDCLI SCRIPTING CONTRACT
+Format: plain text with PowerShell examples. Audience: LLMs and script authors.
+Scope: the compiled QlikCloudCLI PowerShell module distributed through the
+PowerShell Gallery or as a ZIP.
+
+PURPOSE AND AUTHORITY
+
+Generate executable PowerShell from the installed module's actual command
+metadata, matching commands.json, model types, and relevant Qlik API docs.
+This file guides use of that metadata; the catalog supplies the complete inventory.
+The inventory changes when upstream schemas change. Read commandCount for the
+distinct REST command count; do not use operations.Count as the exported-command
+count. Use Get-Command -Module QlikCloudCLI for all exported commands, including
+constructors and handwritten commands. Inspect the installed catalog rather
+than assuming a count or inventory from a previous release.
+
+PUBLIC COMMAND NAMING
+
+REST and request-model command nouns start with QC, for example Get-QCApiKeys
+and New-QCCollectionsCollectionsCreateCollectionRequestBodyObject. REST nouns
+omit whole path placeholder segments: /collections/{collectionId}/items maps to
+QCCollectionsItems. Nested resources remain separate commands. Direct GET
+list/detail pairs use one command with List (default) and By<PublicId> parameter
+sets, for example Get-QCCollections -CollectionId uses ByCollectionId. A singleton
+operation uses Default. Resolve all names and sets from commands.json rather
+than inventing a ById command suffix. Constructors still follow
+New-QC<Api><Type>Object, including any ById text within the model name itself.
+Connection lookup and token exchange are Get-QCConnection and Receive-QCToken.
+Connect-QlikCloud and Disconnect-QlikCloud keep their full names. Get-QlikUserAgent
+and Invoke-OpenApp are unchanged. There are no compatibility aliases for the
+previous long REST or constructor names. Do not invent Connect-QC or Disconnect-QC.
+The module name is still QlikCloudCLI, and DLL names, paths, error identifiers,
+and .NET namespaces/types such as QlikCloud.Common.Connection are unchanged.
+Short command names do not imply a QC namespace or a QC module name.
+
+Explicit route-name exceptions avoid ambiguous parameter unions:
+Get-QCAppsReportFiltersById, Get-QCDirectAccessAgentsConnectorsFilesByFileType,
+Get-QCSharingTasksExecutionsByExecutionId, and
+Invoke-QCDataFilesActionsChangeSpaceById. These exceptions do not establish a
+general naming rule. Get-QCAudits uses AuditId for the detail route; its List
+set retains Id as the list filter. Never substitute one for the other.
+
+Authority order for a particular installed module:
+1. Get-Command: exported names, parameter types, sets, aliases, binding rules.
+2. commands.json beside the module manifest: operation-to-command/parameter-set
+   mapping, request-model constructors, SDK method bindings, outputs and routes.
+3. Matching QlikCloud.operations.json and installed CLR model types: additional
+   operation bindings and available request/response properties and enum values.
+4. COMMANDS.md: the complete readable command/route index.
+5. README.md and this file: packaged usage guidance and examples.
+6. Official Qlik API reference: required payload fields, limits, filtering,
+   pagination, permissions and other semantics absent from the local metadata.
+   Start at [Qlik REST APIs](https://qlik.dev/apis/rest/) and match the exact
+   HTTP method and path recorded in commands.json.
+
+Never invent a cmdlet, model, parameter, scope, filter expression, response
+property or pagination convention. Do not translate a REST route into a guessed
+cmdlet name. Resolve it from the catalog. Do not assume a newer online API
+operation exists in the installed module. If required metadata is missing,
+consult the official reference for that route or state the missing requirement.
+Online examples may target a different API version or tool; they do not create
+additional parameters or commands in this module. QlikCloudCLI is a PowerShell
+module, not the separate qlik executable: do not substitute qlik CLI syntax.
+Get-Help currently provides native cmdlet syntax; there is no generated MAML
+manual. Get-Command -Syntax and COMMANDS.md are the reliable local entry points.
+
+ENVIRONMENT AND IMPORT
+
+Target Windows PowerShell 5.1 (Desktop), included with Windows. Run scripts with
+powershell.exe. Do not require users to install another PowerShell runtime.
+Gallery packages and ZIPs contain the compiled module and its dependencies.
+No compilation, development SDK, package restore or source checkout is needed.
+The first public Gallery release is pending. Once it is available, users who
+request installation can run Install-Module -Name QlikCloudCLI -Repository
+PSGallery -Scope CurrentUser, then Import-Module QlikCloudCLI. Do not install
+or update modules as an incidental side effect of an ordinary generated script.
+For ZIP installation, extract the whole archive and preserve all files and the
+bin directory. Import the extracted manifest:
+
+```powershell
+# Use caller-supplied ZIP and extraction paths. Prefer a new, empty destination.
+$zipPath = 'C:\Downloads\QlikCloudCLI.zip'
+$extractDirectory = 'C:\QlikModules'
+# Unblock only a downloaded package from a source the caller trusts.
+Unblock-File -LiteralPath $zipPath -ErrorAction Stop
+Expand-Archive -LiteralPath $zipPath -DestinationPath $extractDirectory -ErrorAction Stop
+$modulePath = Join-Path $extractDirectory 'QlikCloudCLI/QlikCloudCLI.psd1'
+if (-not (Test-Path -LiteralPath $modulePath -PathType Leaf)) { throw 'Module manifest is missing from the extracted package.' }
+$module = Import-Module -Name $modulePath -PassThru -ErrorAction Stop
+$catalogPath = Join-Path $module.ModuleBase 'commands.json'
+$catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+Get-Command -Module QlikCloudCLI
+```
+
+For later sessions, import that manifest path directly; extraction is a one-time
+installation step. Use a fresh powershell.exe process when switching module versions:
+Import-Module -Force does not reliably unload previously loaded .NET assemblies.
+An existing installation on PSModulePath can be loaded with Import-Module
+QlikCloudCLI; when multiple versions exist, inspect the returned module's Path
+and use the intended manifest explicitly. Do not import individual DLLs instead
+of the manifest or mix dependencies/catalogs from different ZIP versions.
+
+Unblock the trusted ZIP before extraction. If files were already extracted,
+scope recovery to that package's QlikCloudCLI directory, never a whole drive
+or Downloads directory. HOW-TO.md contains the recovery command. Do not change
+or bypass the caller's PowerShell execution policy to import the module.
+
+For a signed release, optional verification checks only the manifest and the
+two module DLLs; do not infer that every bundled dependency has the same signer:
+
+```powershell
+$signaturePaths = @(
+    $modulePath
+    (Join-Path $module.ModuleBase 'bin/QlikCloud.dll')
+    (Join-Path $module.ModuleBase 'bin/QlikCloudCLI.dll')
+)
+Get-AuthenticodeSignature -LiteralPath $signaturePaths -ErrorAction Stop |
+    Select-Object Path, Status, @{ Name = 'Signer'; Expression = { $_.SignerCertificate.Subject } }
+```
+
+For these files, expect Valid and verify the publisher's identity. Trust
+evaluation depends on the local machine's certificate configuration. Report a
+failed validation for the caller to resolve through their certificate policy;
+do not treat an unknown signer or trust failure as proof of a valid release.
+
+All delivered scripts must parse and run in Windows PowerShell 5.1. Use that
+runtime for validation, not a newer parser. Read-Host supports -AsSecureString;
+it does not support -MaskInput. ConvertFrom-Json supports neither -AsHashtable
+nor -Depth in 5.1. ConvertTo-Json -Depth is supported. Avoid ForEach-Object
+-Parallel, the ternary operator, null-coalescing/null-conditional operators,
+pipeline-chain operators, and encoding names such as utf8NoBOM. Export-Csv
+-Encoding UTF8 writes a UTF-8 BOM in this runtime. The ::new constructor syntax
+is available in 5.1. Load System.Web with Add-Type -AssemblyName System.Web
+before using System.Web.HttpUtility in a fresh session.
+
+For optional current-user installation, derive the WindowsPowerShell\Modules
+directory from $PROFILE.CurrentUserAllHosts in powershell.exe; do not use the
+PowerShell\Modules directory associated with other PowerShell editions.
+
+CATALOG DISCOVERY RECIPE
+
+The following are local metadata operations; they make no tenant requests.
+Catalog formatVersion 2 contains:
+- commands: one entry per distinct REST command, with commandName,
+  defaultParameterSetName, parameterSetNames and operationCount.
+- commandCount: the number of distinct REST commands, excluding constructors
+  and handwritten commands.
+- operations: one entry per HTTP operation, including commandName,
+  parameterSetName and that operation's parameters/required flags/output types.
+- constructors: the local request-model constructor inventory.
+
+commandName is not unique in operations. Select a route using its HTTP method
+and exact path (and API context where needed), require exactly one match, then
+use its parameterSetName to select Get-Command metadata. Do not union mandatory
+parameters across different sets. List is the default only for a grouped pair;
+the detail identifier selects its By<PublicId> set. List-only filters and
+detail-only parameters cannot be mixed. A parent identifier required by both
+nested routes does not select the detail set; the additional child identifier
+does. Do not infer unrelated routes from a command's combined parameters.
+
+For signed packages, catalog.assemblySha256 describes the delivered, signed
+QlikCloud.dll. The optional unsignedAssemblySha256 records the original unsigned
+generator-input hash for provenance; do not compare that field to the installed
+signed DLL. The delivered file must match assemblySha256.
+
+```powershell
+# Check that the catalog belongs to the packaged SDK and operation inventory.
+$sdkPath = Join-Path $module.ModuleBase 'bin/QlikCloud.dll'
+$inventoryPath = Join-Path $module.ModuleBase 'QlikCloud.operations.json'
+if ((Get-FileHash -LiteralPath $sdkPath -Algorithm SHA256).Hash -ine $catalog.assemblySha256) {
+    throw 'SDK and command catalog do not match; import a complete matching package.'
+}
+if ((Get-FileHash -LiteralPath $inventoryPath -Algorithm SHA256).Hash -ine $catalog.clientManifestSha256) {
+    throw 'Operation inventory and command catalog do not match.'
+}
+$catalog.operations | Group-Object api | Sort-Object Name | Select-Object Name, Count
+$catalog.commands | Select-Object commandName, defaultParameterSetName, parameterSetNames, operationCount
+
+# Resolve an exact HTTP operation, not a guessed command name.
+$operationMatches = @($catalog.operations | Where-Object {
+    $_.api -eq 'collections' -and
+    $_.path -ceq '/api/v1/collections' -and $_.httpMethod -eq 'POST'
+})
+if ($operationMatches.Count -ne 1) { throw 'Expected exactly one matching operation.' }
+$operation = $operationMatches[0]
+$operation | Select-Object commandName, parameterSetName, httpMethod, path, outputType, rawResponseType, supportsShouldProcess
+$operation.parameters | Select-Object name, type, mandatory, pipelineByValue, pipelineByPropertyName, aliases
+Get-Command -Name $operation.commandName -Module QlikCloudCLI -Syntax
+$command = Get-Command -Name $operation.commandName -Module QlikCloudCLI
+$parameterSets = @($command.ParameterSets | Where-Object Name -EQ $operation.parameterSetName)
+if ($parameterSets.Count -ne 1) { throw 'Catalog parameter set is absent or ambiguous in the installed command.' }
+$parameterSets[0].Parameters | Select-Object Name, ParameterType, IsMandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, Aliases
+
+# Find the exact constructor for this operation's typed body.
+$bodyParameter = $operation.parameters | Where-Object name -eq 'Body'
+$constructors = @($catalog.constructors | Where-Object modelType -eq $bodyParameter.type)
+$constructors | Select-Object commandName, modelType, supportsJson, collectionElementType
+$constructors.parameters | Select-Object name, type, mandatory, constructorOnly
+foreach ($constructor in $constructors) {
+    Get-Command -Name $constructor.commandName -Module QlikCloudCLI -Syntax
+}
+```
+
+Operation parameters describe endpoint-specific parameters. The inherited
+Connection, RawResponse, Logger, common PowerShell parameters, and conditional
+WhatIf/Confirm parameters are discovered with Get-Command. Constructor Json and
+InputObject parameter sets also require Get-Command. Catalog type strings use
+the C# global:: prefix; that prefix is not part of PowerShell type syntax.
+Use modelType to match constructors; do not strip or approximate model names.
+Not every object/union request body resolves to one constructor. Inspect the
+available constructors and official request-body definition when the declared
+body type is System.Object. The ZIP does not include API schema files. Do not
+request local schema paths or a development environment to author scripts.
+
+Inspect compiled model properties locally without making a request. The
+JsonProperty metadata identifies JSON field names and serialization constraints;
+it does not contain every server-side requirement, validation rule or default.
+
+```powershell
+$bodyType = (Get-Command $operation.commandName -Module QlikCloudCLI).Parameters['Body'].ParameterType
+foreach ($property in $bodyType.GetProperties()) {
+    $json = $property.GetCustomAttributes([Newtonsoft.Json.JsonPropertyAttribute], $true) | Select-Object -First 1
+    $isExtensionData = $property.IsDefined([Newtonsoft.Json.JsonExtensionDataAttribute], $true)
+    [pscustomobject]@{
+        Property = $property.Name
+        Type = $property.PropertyType.FullName
+        JsonName = if ($isExtensionData) { '(extension data)' } elseif ($null -ne $json) { $json.PropertyName } else { $property.Name }
+        JsonRequired = if ($null -ne $json) { [string]$json.Required } else { '' }
+        ExtensionData = $isExtensionData
+    }
+}
+# Inspect the selected operation's response model without calling the tenant.
+[QlikCloud.Collections.CollectionResultResponseBody].GetProperties() |
+    Select-Object Name, PropertyType
+```
+
+For an enum parameter, discover CLR names instead of guessing capitalization,
+punctuation or wire-value conversion. Json constructors accept API wire
+values through the SDK JSON converters. CLR enum members can carry an
+EnumMemberAttribute whose Value differs from their C# name.
+
+```powershell
+$parameter = (Get-Command Get-QCItems -Module QlikCloudCLI).Parameters['ResourceType']
+$enumType = [Nullable]::GetUnderlyingType($parameter.ParameterType)
+if ($null -eq $enumType) { $enumType = $parameter.ParameterType }
+[Enum]::GetNames($enumType)
+```
+
+For payload semantics, use the official reference for the exact route. For
+example, [Collections REST](https://qlik.dev/apis/rest/collections/) documents
+the create body and [Users REST](https://qlik.dev/apis/rest/users/) documents
+user filters and page limits. Map those JSON fields to the installed constructor
+and its model metadata. Do not assume a property has a value in every response:
+optional fields such as user Subject may be omitted. If online docs and the
+installed type differ, explain the compatibility gap rather than inventing a
+property or silently substituting a different operation.
+An AdditionalProperties dictionary marked as extension data contributes its
+entries as JSON fields; it is not a literal additionalProperties request field.
+
+CONNECTIONS, AUTHENTICATION AND SECRETS
+
+Use a generic tenant hostname or base HTTPS URL, without /api, a query, fragment
+or embedded credentials. Obtain $apiKey, $clientId, $clientSecret and $scope
+from the caller's chosen configuration/secret provider. Do not assume a secret
+provider module is installed; do not embed credentials in source or examples.
+Never print tokens, connection internals, authorization headers or full token
+responses. Do not serialize a connection into logs, CSV, JSON or a transcript.
+
+For an interactive API-key prompt in Windows PowerShell 5.1:
+
+```powershell
+$secureApiKey = Read-Host 'API key' -AsSecureString
+try {
+    $apiKey = ([pscredential]::new('QlikCloudAPIKey', $secureApiKey)).GetNetworkCredential().Password
+    $connection = Connect-QlikCloud -Tenant $tenant -APIKey $apiKey -PassThru -ErrorAction Stop
+}
+finally {
+    $apiKey = $null
+    $secureApiKey.Dispose()
+    $secureApiKey = $null
+}
+```
+
+The connection remains open for subsequent commands and retains its credential
+until disposed. Disconnect it in the enclosing workflow's finally block. The
+examples below are alternatives to this prompt, not additional connections to
+create without disposing earlier ones.
+
+```powershell
+$tenant = 'tenant.region.qlikcloud.com'
+
+# Explicit connection: leaves the current runspace default unchanged.
+$connection = Connect-QlikCloud -Tenant $tenant -APIKey $apiKey -PassThru -ErrorAction Stop
+try {
+    $page = Get-QCUsers -Limit 20 -Connection $connection -ErrorAction Stop
+    $page.Data | Select-Object Id, Name, Email
+}
+finally {
+    Disconnect-QlikCloud -Connection $connection -Confirm:$false
+}
+
+# Alternative: establish a default in the current runspace; no output by default.
+Connect-QlikCloud -Tenant $tenant -APIKey $apiKey
+$current = Get-QCConnection
+Disconnect-QlikCloud
+
+# Alternative OAuth flows; use the scopes/client registration actually provisioned.
+Connect-QlikCloud -Tenant $tenant -ClientID $clientId -Scope $scope
+Connect-QlikCloud -Tenant $tenant -ClientID $clientId -ClientSecret $clientSecret -ClientCredentials -Scope $scope
+```
+
+The alternatives above are independent examples, not a sequence of required
+authentication steps. API-key Connect constructs a client without validating
+tenant access; a successful authorized request establishes actual access.
+Client-credentials OAuth requires both ClientID and ClientSecret. Requested
+scopes must be allowed by the OAuth client registration; effective permissions
+also depend on the calling identity and resource access. Do not invent a scope
+that supposedly grants all operations. Consult the operation and current Qlik
+scope guidance: https://qlik.dev/manage/access-control/scopes/ and
+https://qlik.dev/apis/rest/oauth/ .
+
+The default connection is per PowerShell runspace, not process-global. Explicit
+-Connection takes precedence. Child/parallel runspaces do not inherit a default;
+import the module and manage a connection in each worker. Prefer sequential
+iteration unless concurrency is requested and connection/rate-limit lifetimes
+are designed. Disconnect closes the selected HTTP transport and clears the
+default only if it is that same connection. A disposed connection cannot be
+reused. Do not dispose a connection while another operation is using it.
+
+Receive-QCToken accepts -Connection and requires OAuth; TokenPurpose
+defaults to Websocket. It returns a sensitive IdentityModel TokenResponse, not
+a plain token string. Assign it to a variable only when the task needs token
+exchange, and pass its AccessToken directly to the authorized consumer without
+echoing it. JWT authentication via -JWTToken is explicitly unsupported and
+fails with QlikCloudJwtNotSupported; do not treat it as an OAuth alternative.
+Get-QlikUserAgent returns only the user-agent string.
+
+REQUEST MODELS, NULLABILITY AND PIPELINES
+
+New-*Object commands in catalog.constructors only construct local CLR models.
+They perform no HTTP request. New-* REST commands in catalog.operations can
+create remote resources. Distinguish them using the catalog, not just the verb.
+
+Normal model constructors accept named properties, -Json, or typed -InputObject.
+Json and InputObject are mutually exclusive. Named properties can override
+either input when their parameter set permits it. InputObject is copied through
+SDK JSON serialization before overrides; the source and nested model properties
+are not mutated. Only explicitly bound properties are overridden. Do not filter
+splat values using truthiness: $false, 0 and empty strings are deliberate values.
+Omit an optional endpoint parameter when it should be absent. Optional bools
+such as -TotalResults and -NoData are bool values, not SwitchParameter flags;
+write -TotalResults $false or -NoData $true. RawResponse and WhatIf are switches.
+
+Required endpoint/body parameters are enforced by PowerShell binding. Many
+constructor properties are optional to the binder even when the API
+requires them. Supply required API fields and obey endpoint-specific bounds;
+a successfully constructed object does not prove the server will accept it.
+Do not infer an API default from the CLR default of an uninitialized property.
+
+```powershell
+# JSON wire value "private" maps through the generated enum converter.
+$bodyJson = @{ name = 'Example collection'; type = 'private'; description = 'Example only' } |
+    ConvertTo-Json -Depth 10 -Compress
+$body = New-QCCollectionsCollectionsCreateCollectionRequestBodyObject -Json $bodyJson
+New-QCCollections -Body $body -WhatIf
+
+# Local conversion example only: source stays true/5, copy contains false/0.
+$original = New-QCReloadsReloadRequestObject -AppId $appId -Partial $true -Weight 5
+$copy = New-QCReloadsReloadRequestObject -InputObject $original -Partial $false -Weight 0
+```
+
+Collection-model constructors accept -Items; supplying Items replaces the
+collection contents. Json may be an array when the request model is a collection,
+for example New-QCCollectionsCollectionByIdPatchObject. Constructors
+preserve the collection as a single typed body object. FileParameter constructors
+are different: no Json support, and InputObject copies the wrapper while sharing
+the same open stream. Do not combine their constructor-only properties with
+InputObject; Get-Command exposes the exact parameter sets.
+
+Path identifiers bind by property name. A single path identifier generally also
+binds by value; verify aliases and rules in the selected operation and parameter
+set. An Id alias is absent when it conflicts with a real parameter, such as a
+list filter; use the public path identifier instead. Multiple
+path identifiers require explicitly named arguments or matching properties.
+Body binds typed objects by value. Each pipeline record invokes one SDK call;
+there is no implicit bulk request or automatic pagination. Prefer explicitly
+named IDs when the input object's Id could refer to a different resource.
+
+```powershell
+# Known IDs supplied by the caller; one GET per input string.
+$userIds | Get-QCUsers -Connection $connection
+# Prefer this for bodies when the path ID is fixed.
+$patchBody | Update-QCCollections -CollectionId $createdId -Connection $connection -WhatIf
+```
+
+RESPONSES AND ERRORS
+
+Default REST output unwraps APIResponse<T>.Object and emits the typed payload.
+An API collection envelope remains an envelope; explicitly select its Data or
+other documented collection property. A payload that is itself enumerable
+can be enumerated by the PowerShell pipeline. Use @(...) when caller code needs
+stable zero/one/many array semantics. Do not assume all endpoints return Data.
+
+-RawResponse returns the SDK response wrapper as one object, retaining Object,
+StatusCode, Headers and RawContent when that response type supports them.
+An endpoint without a typed response body returns APIResponse directly, with no
+Object property. FileResponse is already a streaming response and is not wrapped
+in another Object property. Inspect outputType/rawResponseType and actual CLR
+metadata before accessing properties. RawContent may contain sensitive records;
+select only the fields needed for the task instead of printing a full wrapper.
+
+```powershell
+$response = Get-QCUsers -Limit 20 -Connection $connection -RawResponse -ErrorAction Stop
+$status = $response.StatusCode
+$users = @($response.Object.Data)
+```
+
+HTTP/transport failures are terminating errors. Use try/catch and -ErrorAction
+Stop for clear script boundaries. HTTP errors use QlikCloudHttpError with a
+QlikCloudCLI.Runtime.QlikCloudApiException whose StatusCode is available.
+Categories include 400 InvalidArgument, 401 AuthenticationError, 403
+PermissionDenied, 404 ObjectNotFound and 429 LimitsExceeded. A missing or disposed
+connection reports QlikCloudConnectionRequired. Invalid constructor JSON reports
+QlikCloudInvalidModelJson. Generic operation failures use QlikCloudOperationFailed.
+Do not require an exact FullyQualifiedErrorId string: PowerShell may append the
+implementing cmdlet type. Do not dump raw request/server bodies or credentials
+when adding error handling; log an operation label, status and category instead.
+
+```powershell
+try {
+    $result = Get-QCCollections -CollectionId $collectionId -Connection $connection -ErrorAction Stop
+}
+catch {
+    $statusProperty = $_.Exception.PSObject.Properties['StatusCode']
+    if ($null -ne $statusProperty) {
+        Write-Warning ('Collection read failed with HTTP {0}.' -f $statusProperty.Value)
+    }
+    throw
+}
+```
+
+REST calls pass cancellation to SDK asynchronous methods. Internal
+SDK retries can mean more than one HTTP attempt; do not promise exactly-once
+effects or automatically replay a non-idempotent create, reload, import or stream
+upload. Bound retries and respect endpoint/rate-limit guidance when adding them.
+
+PAGINATION: USERS EXAMPLE, NOT A UNIVERSAL ALGORITHM
+
+There is no universal -All, -Page, -PageSize, offset or cursor convention.
+Get-QCUsers accepts -Limit (documented range 1..100), -Next and -Prev. Its
+response uses Data and Links.Next.Href. Next is a cursor token, not a whole URL;
+do not pass Href directly as -Next. Some responses use the legacy startingAfter
+query key in that link: extract its value and pass it as -Next.
+The module has no -StartingAfter parameter on Get-QCUsers. The helper
+below accepts next first, falling back to startingAfter. Do not combine Next and
+Prev. Preserve
+filters/sort/limit across pages. Stop when no next link exists, not merely when
+a page contains fewer records than the requested limit. Other APIs need their
+own documented pagination logic, even when their parameter names look similar.
+
+This is a user-defined helper, not an exported module command. It performs
+read-only tenant requests when invoked. A page cap and repeated-cursor check
+turn incomplete enumeration into an explicit error instead of silent truncation.
+
+```powershell
+function Read-AllQlikCloudUsers {
+    param(
+        [Parameter(Mandatory)] [QlikCloud.Common.Connection] $Connection,
+        [Parameter(Mandatory)] [uri] $TenantBaseUri,
+        [ValidateRange(1, 100000)] [int] $MaxPages = 1000
+    )
+    Add-Type -AssemblyName System.Web
+    $query = @{ Connection = $Connection; Limit = 100; ErrorAction = 'Stop' }
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    for ($pageNumber = 1; $pageNumber -le $MaxPages; $pageNumber++) {
+        $page = Get-QCUsers @query
+        foreach ($user in $page.Data) { $user }
+        if ($null -eq $page.Links -or $null -eq $page.Links.Next -or
+            [string]::IsNullOrWhiteSpace($page.Links.Next.Href)) { return }
+        $nextUri = [uri]::new($TenantBaseUri, $page.Links.Next.Href)
+        if ($nextUri.Scheme -ne $TenantBaseUri.Scheme -or
+            $nextUri.Authority -ne $TenantBaseUri.Authority -or
+            $nextUri.AbsolutePath -cne '/api/v1/users' -or
+            -not [string]::IsNullOrEmpty($nextUri.UserInfo)) {
+            throw 'Unexpected users pagination link.'
+        }
+        $linkQuery = [System.Web.HttpUtility]::ParseQueryString($nextUri.Query)
+        $cursor = $linkQuery['next']
+        if ([string]::IsNullOrEmpty($cursor)) { $cursor = $linkQuery['startingAfter'] }
+        if ([string]::IsNullOrEmpty($cursor) -or -not $seen.Add($cursor)) {
+            throw 'Missing or repeated users pagination cursor.'
+        }
+        $query['Next'] = $cursor
+    }
+    throw 'Users pagination exceeded MaxPages; results are incomplete.'
+}
+
+# Gather successfully before writing a final CSV; no Format-Table before Export-Csv.
+$allUsers = @(Read-AllQlikCloudUsers -Connection $connection -TenantBaseUri "https://$tenant/")
+$allUsers | Select-Object Id, Name, Email | Export-Csv -LiteralPath $csvPath -NoTypeInformation -Encoding utf8
+```
+
+Only export the fields and destination the caller requested. The helper's output
+can be streamed by callers, but a later error means that stream is incomplete.
+For very large inventories, write a temporary file and publish it only after
+successful completion instead of holding the entire inventory in memory.
+User filters use the API's documented filter syntax; they are not PowerShell
+Where-Object expressions. Consult the Users REST reference for allowed
+fields/operators.
+
+COMMON WORKFLOW MAP
+
+Task                          Exact command(s) and important shape
+Users inventory               Get-QCUsers -> Users.Data, Links.Next.Href
+Read a user                   Get-QCUsers -UserId -> Users.Response;
+                              inspect that model, not an assumed plain User
+Spaces inventory              Get-QCSpaces -> Spaces envelope; own pagination
+Catalog/app inventory         Get-QCItems -ResourceType App -> items envelope
+Read an app                   Get-QCApps -AppId -> NxApp
+Private collections           Get-QCCollections (List) or -CollectionId (detail);
+                              New/Set/Update/Remove-QCCollections
+Collection items              Get-QCCollectionsItems -CollectionId (List),
+                              add -ItemId for one item
+Start a reload                New-QCReloads -Body (ReloadRequest)
+Read a reload                 Get-QCReloads -ReloadId
+Initiate an app export        Invoke-QCAppsExport -AppId -NoData $true
+Download temporary content    Get-QCTempContents -Id -> FileResponse
+Download app media            Get-QCAppsMediaFiles -AppId -Path
+Upload/replace app media      Set-QCAppsMediaFiles -AppId -Path -Body
+Open an Engine app            Invoke-OpenApp -AppId -Connection -NoData $true
+
+Get-QCApps requires AppId; it has no list operation in this module. Use
+Get-QCItems -ResourceType App for an app catalog page. An app catalog
+item's Id is its item ID; ResourceId is the referenced app ID. Do not feed item
+IDs to app operations. Discover every workflow's full parameters in the catalog.
+Reload submission is not reload completion. If polling is required, inspect the
+installed Reload model and official API reference for actual status values,
+use a time/page budget, and handle
+documented terminal failures; do not invent success states or poll forever.
+
+```powershell
+$itemsPage = Get-QCItems -ResourceType App -Limit 20 -Connection $connection
+$itemsPage.Data | Select-Object Id, Name, ResourceId
+# This iterates this page only; apply the items API's pagination for a full list.
+foreach ($item in $itemsPage.Data) {
+    $app = Get-QCApps -AppId $item.ResourceId -Connection $connection
+    # Select only properties confirmed on NxApp for the requested report.
+}
+```
+
+MUTATIONS AND A GUARDED COLLECTION LIFECYCLE
+
+supportsShouldProcess in the catalog identifies commands with WhatIf/Confirm.
+Mutation WhatIf executes before connection validation or the HTTP call, so it
+can be used offline. It still requires valid PowerShell parameter binding and
+local model construction. It does not validate remote permissions, complete
+payload validity, server availability or the eventual outcome. Do not append
+WhatIf to GET commands that do not support it. Constructors have no WhatIf:
+constructing their local object does not require one.
+
+Keep preview and execution distinct. Never broaden a requested change or delete
+resources by a name/filter search as cleanup. For a test, delete only the exact
+resource ID returned by that test's successful create, after verifying that
+identity, its unique marker, and an ItemCount of zero. If create succeeds remotely but no ID is
+received, report the uncertainty instead of searching and deleting candidates.
+
+The following example defaults to preview. Set execute to true only for an
+authorized create/update/delete test. It changes only the collection it creates.
+
+```powershell
+$execute = $false
+$name = 'cli-example-' + [guid]::NewGuid().ToString('N')
+$bodyJson = @{ name = $name; type = 'private'; description = 'Temporary CLI example' } |
+    ConvertTo-Json -Depth 10 -Compress
+$body = New-QCCollectionsCollectionsCreateCollectionRequestBodyObject -Json $bodyJson
+New-QCCollections -Body $body -WhatIf
+
+if ($execute) {
+    $createdId = $null
+    try {
+        $created = New-QCCollections -Body $body -Connection $connection -ErrorAction Stop
+        $createdId = [string]$created.Id
+        if ([string]::IsNullOrWhiteSpace($createdId)) { throw 'Create returned no ID; do not search-delete.' }
+        $current = Get-QCCollections -CollectionId $createdId -Connection $connection
+        if ($current.Id -cne $createdId -or $current.Name -cne $name -or
+            $current.Type -ne 'Private' -or $current.ItemCount -ne 0) {
+            throw 'Created-resource identity check failed.'
+        }
+        $replacement = New-QCCollectionsCollectionsUpdateCollectionRequestBodyObject -Name $name -Description 'Updated by example'
+        $null = Set-QCCollections -CollectionId $createdId -Body $replacement -Connection $connection
+        $patch = New-QCCollectionsCollectionByIdPatchObject -Json '[{"op":"replace","path":"/description","value":"Patched by example"}]'
+        $null = Update-QCCollections -CollectionId $createdId -Body $patch -Connection $connection
+        Get-QCCollections -CollectionId $createdId -Connection $connection |
+            Select-Object Id, Name, Description
+    }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($createdId)) {
+            $owned = Get-QCCollections -CollectionId $createdId -Connection $connection -ErrorAction Stop
+            if ($owned.Id -cne $createdId -or $owned.Name -cne $name -or
+                $owned.Type -ne 'Private' -or $owned.ItemCount -ne 0) {
+                throw 'Cleanup identity check failed; collection was not deleted.'
+            }
+            $null = Remove-QCCollections -CollectionId $createdId -Connection $connection -Confirm:$false -ErrorAction Stop
+        }
+    }
+}
+```
+
+Cleanup failure must be reported with the created ID retained for an operator;
+do not hide it or fall back to broad deletion. A workflow requiring durable
+recovery should persist its created ID and marker to the caller's approved state
+file before later steps. If wrapping these operations in an advanced function,
+declare SupportsShouldProcess and honor the caller's WhatIf/Confirm intent.
+
+BINARY DOWNLOADS, EXPORTS AND UPLOADS
+
+FileResponse owns an open Stream and must be disposed. Copy binary bytes to a
+file stream; do not use Out-File, Set-Content, text encoding or JSON conversion.
+Use an explicit output path and overwrite policy. This example refuses overwrite.
+A copy failure can leave a partial file; report it or use a temporary-file and
+rename workflow when the caller needs an atomic final output.
+
+```powershell
+# $tempContentId and $outputPath are caller-supplied values.
+$download = $null
+$destination = $null
+try {
+    $download = Get-QCTempContents -Id $tempContentId -Connection $connection -ErrorAction Stop
+    $destination = [System.IO.File]::Open($outputPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write)
+    $download.Stream.CopyTo($destination)
+}
+finally {
+    if ($null -ne $destination) { $destination.Dispose() }
+    if ($null -ne $download) { $download.Dispose() }
+}
+```
+
+Invoke-QCAppsExport is the POST export-initiation call.
+It returns APIResponse with a Location header (201), not a FileResponse and not
+an app file. There is no -File, -OutFile or -Path convenience parameter on it.
+Use -WhatIf for preview. On authorized execution, inspect the Location header,
+validate the URI against the expected tenant and /api/v1/temp-contents/{id}
+route, and obtain the temp-content ID before calling the download command above.
+Do not blindly follow an arbitrary URL with credentials. If its route/query does
+not match the known download contract, consult the API reference and stop rather than
+discarding query values or guessing a different endpoint. NoData is an explicit
+bool: -NoData $true exports object contents without app data.
+
+FileParameter constructor type must match its API group: Apps.FileParameter and
+TempContents.FileParameter are different CLR types. Open a new stream for each
+actual upload. HTTP content consumes/disposes the supplied upload stream; do not
+reuse it for retries or a second request. Finally also disposes streams for
+WhatIf and early failures, when HTTP never acquired them.
+
+```powershell
+# Preview a media replacement; remove WhatIf only for an authorized target.
+$source = [System.IO.File]::OpenRead($inputPath)
+try {
+    $upload = New-QCAppsFileParameterObject -Data $source -FileName ([System.IO.Path]::GetFileName($inputPath)) -ContentType 'application/octet-stream'
+    Set-QCAppsMediaFiles -AppId $appId -Path $mediaPath -Body $upload -Connection $connection -WhatIf
+}
+finally { $source.Dispose() }
+```
+
+ENGINE AND COMPATIBILITY LIMITS
+
+Invoke-OpenApp returns Qlik.Engine.IApp. Use the bundled QlikSense.NetSDK's
+documented Engine methods and session lifecycle; do not invent REST-style
+cmdlets for Engine methods. NoData and LogWS are bool parameters. REST WhatIf
+does not protect arbitrary calls made on an IApp. Close/dispose the Engine
+session according to that SDK independently of the HTTP connection lifecycle.
+Browser OAuth, token exchange and Engine operations have cancellation limitations
+in their SDK methods. Importing the module or completing REST requests does not
+establish that a specific Engine workflow will work in a tenant. Verify the
+requested Engine methods and session handling separately; do not describe those
+flows as tested unless they were actually exercised.
+
+SCRIPT-GENERATION ACCEPTANCE CHECKLIST
+
+Before returning or executing a generated script:
+1. Identify the imported package and match its catalog/inventory hashes. Use a
+   fresh PowerShell process if another SDK assembly was already loaded.
+2. Resolve every endpoint by exact method+route and each body constructor by
+   modelType. Check every command and named parameter with Get-Command. Inspect
+   parameter sets, mandatory fields, nullable booleans, aliases and enum values.
+3. Use compiled model metadata and the matching official API reference for
+   payload requirements, response envelope, pagination links/cursors, limits,
+   filtering and permissions. Do not assume one API group's rules apply to
+   another or require local API schema files.
+4. Use explicit connection lifetimes; keep secrets and token responses out of
+   output. Do not rely on a default crossing runspaces or create fake JWT support.
+5. Parse the script in Windows PowerShell 5.1 and construct its request models offline. Preview
+   intended mutations with WhatIf. Local conversion and WhatIf are not proof of
+   live authorization or server-side acceptance.
+6. Perform authorized read-only checks first. Execute changes only within the
+   caller's requested scope. Keep a created-resource ID for recovery; cleanup
+   must never target an existing resource merely because its name matches.
+7. Handle zero/one/many results and all required pages. Bound polling/retries.
+   Preserve false/zero values. Never convert binary streams to text.
+8. Dispose file responses, file streams, connections and Engine sessions through
+   their appropriate lifecycles. Report partial results or cleanup failure.
+9. State what was actually validated: metadata/parse, offline behavior, WhatIf,
+   or specific live requests. Do not imply tenant/Engine access from import or
+   from an offline test alone.
+
+Local parse example (does not execute the script):
+
+```powershell
+$tokens = $null
+$parseErrors = $null
+$null = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count) { throw ($parseErrors.Message -join [Environment]::NewLine) }
+```
+
+When delivering a script, include its required PowerShell version, required input
+variables, how to import the matching module, which calls read or mutate remote
+state, expected output shape, and its actual validation boundary. Prefer a
+small exact script over a broad guessed abstraction that hides tenant effects.

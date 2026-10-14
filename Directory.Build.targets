@@ -1,0 +1,6 @@
+<Project>
+  <Target Name="ValidateQlikCloudReleaseVersion" BeforeTargets="PrepareForBuild">
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(Version)', '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'))"
+           Text="Version must be a stable three-part version (major.minor.patch), supplied by version.json or -p:Version." />
+  </Target>
+</Project>

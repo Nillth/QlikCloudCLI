@@ -1,0 +1,48 @@
+name: Refresh schemas and publish
+
+on:
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      publish_initial:
+        description: Publish the initial saved version (first release only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qlikcloud-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'Nillth/QlikCloudCLI' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    environment: powershell-gallery
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install the pinned publication client
+        shell: pwsh
+        run: |
+          Install-Module Microsoft.PowerShell.PSResourceGet -RequiredVersion 1.1.1 -Repository PSGallery -Scope CurrentUser -Force
+      - name: Refresh, validate, sign, and publish a recoverable release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          SIGNING_URL: ${{ secrets.SIGNING_URL }}
+          SIGNING_API_TOKEN: ${{ secrets.SIGNING_API_TOKEN }}
+          QLIKCLOUD_SIGNING_MODE: ${{ vars.QLIKCLOUD_SIGNING_MODE }}
+          PUBLISH_INITIAL: ${{ inputs.publish_initial || false }}
+        run: ./scripts/Invoke-SchemaRelease.ps1 -PublishInitial:($env:PUBLISH_INITIAL -eq 'true')

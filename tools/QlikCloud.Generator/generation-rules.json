@@ -1,0 +1,14 @@
+{
+  "excludedApis": {
+    "dcaas": "Excluded by the original Cloud generation pipeline.",
+    "evaluations": "Excluded by the original Cloud generation pipeline.",
+    "di-projects": "Excluded by the original Cloud generation pipeline."
+  },
+  "customOperations": {
+    "users GET /api/v1/users/me": "Implemented by src/Custom/Users.UsersMe.cs, including redirect handling."
+  },
+  "methodNames": {
+    "identity-providers GET /api/v1/identity-providers/.well-known/metadata.json": "V1IdentityProviders_wellKnownMetadata_json",
+    ".well-known GET /.well-known/oauth-authorization-server": "_wellKnownOauthAuthorizationServer"
+  }
+}

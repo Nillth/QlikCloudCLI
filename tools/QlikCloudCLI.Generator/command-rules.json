@@ -1,0 +1,56 @@
+{
+  "formatVersion": 1,
+  "commandNames": [
+    {
+      "operation": "apps GET /api/v1/apps/{appId}/report-filters/{id}",
+      "commandName": "Get-QCAppsReportFiltersById",
+      "reason": "Keep the detail route separate because its LoadType2 parameter is a different CLR enum from the list route's LoadType."
+    },
+    {
+      "operation": "direct-access-agents GET /api/v1/direct-access-agents/{agentId}/connectors/{connectorType}/files/{fileType}",
+      "commandName": "Get-QCDirectAccessAgentsConnectorsFilesByFileType",
+      "reason": "Keep the detail route separate because ConnectorType2 differs from the list route's typed ConnectorType parameter."
+    },
+    {
+      "operation": "sharing-tasks GET /api/v1/sharing-tasks/{taskId}/executions/{executionId}",
+      "commandName": "Get-QCSharingTasksExecutionsByExecutionId",
+      "reason": "The detail Status2 enum includes cancelled, which is absent from the list route's Status enum; preserve both typed contracts."
+    },
+    {
+      "operation": "data-files POST /api/v1/data-files/{id}/actions/change-space",
+      "commandName": "Invoke-QCDataFilesActionsChangeSpaceById",
+      "reason": "The single-file action and batch action have different body models and are not a GET list/detail pair."
+    }
+  ],
+  "parameterNames": [
+    {
+      "operation": "audits GET /api/v1/audits/{id}",
+      "parameter": "id",
+      "name": "AuditId",
+      "reason": "Distinguish the detail path identifier from the list route's optional Id query filter when selecting a parameter set."
+    }
+  ],
+  "methodBindings": [
+    {
+      "operation": "apps POST /api/v1/apps/{appId}/export",
+      "parameterNames": ["appId", "noData", "cancellationToken"],
+      "reason": "Bind the schema operation rather than the handwritten file-download convenience overloads. The API response retains its Location header through RawResponse."
+    },
+    {
+      "operation": "identity-providers POST /api/v1/identity-providers",
+      "parameterNames": ["body", "cancellationToken"],
+      "parameterTypes": ["System.Object", "System.Threading.CancellationToken"],
+      "reason": "Use the complete generated union-body operation instead of handwritten JWT-only or SAML-only overloads; their typed payload constructors remain explicitly available."
+    }
+  ],
+  "modelRoots": [
+    {
+      "type": "QlikCloud.IdentityProviders.CreateJWTAuthPayload",
+      "reason": "The generated identity-provider union accepts object, so preserve the handwritten JWT overload's typed request payload constructor."
+    },
+    {
+      "type": "QlikCloud.IdentityProviders.CreateSAMLPayload",
+      "reason": "The generated identity-provider union accepts object, so preserve the handwritten SAML overload's typed request payload constructor."
+    }
+  ]
+}

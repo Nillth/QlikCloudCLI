@@ -1,0 +1,2228 @@
+{
+  "info": {
+    "title": "direct-access-agents",
+    "version": ""
+  },
+  "paths": {
+    "/api/v1/direct-access-agents/{agentId}/actions/{agentAction}": {
+      "post": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Restart an agent",
+        "responses": {
+          "204": {
+            "description": "Service restarted successfully."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error restarting the service."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service doesn't exist."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentAction",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The type of action to perform. Permitted values are `restart` (will not restart the agent if a reload is in `RELOADING` status) and `force-restart` (will restart the agent even if a reload is in `RELOADING` status)."
+          },
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          }
+        ],
+        "description": "Restarts the specified agent. If a reload is in `RELOADING` status the `restart` action will be ignored. Use `force-restart` to restart the agent even if a reload is in `RELOADING` status. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.2+.",
+        "operationId": "restartConnectorAgentServiceAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/benchmarks": {
+      "post": {
+        "tags": [
+          "direct-access-agent-benchmarking"
+        ],
+        "summary": "Start an agent benchmark",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunBenchmarkResponse"
+                }
+              }
+            },
+            "description": "Benchmark task created successfully with a unique identifier."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The agent was not found."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There was an error processing the request."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "All or part of the request has not yet been implemented."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service is unavailable."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "query",
+            "name": "description",
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 200,
+              "minLength": 0
+            },
+            "description": "The description for the benchmark task."
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Forces the benchmark to start regardless of the state of the agent. Does not override QCS resource limits. Use with caution."
+          },
+          {
+            "in": "query",
+            "name": "gigaBytesToTransfer",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "description": "The volume of data in GB to transfer during the throughput measurement part of the benchmark."
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 50,
+              "minLength": 0
+            },
+            "description": "The name to assign to the benchmark task."
+          }
+        ],
+        "description": "Starts a background benchmark task that measures the throughput and latency of a Direct Access agent. Use the returned `benchmarkId` to monitor progress and retrieve performance metrics for capacity planning or performance optimization. The requestor must have the `TenantAdmin` role and be either the gateway's space owner or a member of the gateway's space with the `Can Consume Data` role. Available in Direct Access Gateway V1.7.8+.",
+        "operationId": "runBenchmark",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "connectivity",
+            "uniqueIdentifier": "POST:/connectivity/direct-access-agents/{agentId}/benchmarks"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/benchmarks/{benchmarkId}": {
+      "get": {
+        "tags": [
+          "direct-access-agent-benchmarking"
+        ],
+        "summary": "Get benchmark status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBenchmarkStatusResponse"
+                }
+              }
+            },
+            "description": "Benchmark status and performance metrics retrieved successfully."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The benchmark was not found."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There was an error processing the request."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service is unavailable."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "path",
+            "name": "benchmarkId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The benchmark ID"
+          }
+        ],
+        "description": "Retrieves the current status, progress, and performance metrics for a benchmark task. Use this operation to monitor a running benchmark or inspect its completed results. The requestor must have the `TenantAdmin` role and be either the gateway's space owner or a member of the gateway's space with the `Can Consume Data` role. Available in Direct Access Gateway V1.7.8+.",
+        "operationId": "getBenchmarkStatus",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/benchmarks/{benchmarkId}/cancel": {
+      "post": {
+        "tags": [
+          "direct-access-agent-benchmarking"
+        ],
+        "summary": "Request benchmark cancellation",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelBenchmarkResponse"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL to check the status of the benchmark"
+              }
+            },
+            "description": "The cancellation was requested successfully."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The benchmark was not found."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There was an error processing the request."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service is unavailable."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "path",
+            "name": "benchmarkId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The benchmark ID"
+          }
+        ],
+        "description": "Requests cancellation of a running benchmark for the specified agent. The request is asynchronous. Use the returned status URL to monitor when cancellation completes. The requestor must have the `TenantAdmin` role and be either the gateway's space owner or a member of the gateway's space with the `Can Consume Data` role. Available in Direct Access Gateway V1.7.8+.",
+        "operationId": "cancelBenchmark",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/configurations": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get agent configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationResponseWithGatewayMetadata"
+                }
+              }
+            },
+            "description": "The dictionary of key/value pairs retrieved from the configuration file."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "query",
+            "name": "queryProperties",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Individual properties within the agent configuration"
+          }
+        ],
+        "description": "Retrieves the connector agent configuration from the specified agent. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.2+.",
+        "operationId": "getConnectorAgentConfigAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "patch": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Update agent configuration",
+        "responses": {
+          "204": {
+            "description": "Patch applied."
+          },
+          "207": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchOperationResponse"
+                }
+              }
+            },
+            "description": "Patch applied, validation results show success or failure of each individual patch operation."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported content-type. This endpoint must include `application/json` as a valid content-type for API compliance, but C# JsonPatchDocument doesn't support it. Requests must use `application/json-patch+json`."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          }
+        ],
+        "description": "Makes changes to the local agent configuration using JSON Patch. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.2+.",
+        "operationId": "patchConnectorAgentConfigurationAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            },
+            "application/json-patch+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            }
+          },
+          "description": "The JSON Patch document"
+        },
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/connectors/{connectorType}/files": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get connector configuration files",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorFlatFileConfigurationResponse"
+                }
+              }
+            },
+            "description": "The list of files for the specified connector."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "path",
+            "name": "connectorType",
+            "schema": {
+              "enum": [
+                "file-connector",
+                "rest-connector",
+                "odbc-connector"
+              ],
+              "type": "string"
+            },
+            "required": true,
+            "description": "The connector to retrieve the list of files for"
+          }
+        ],
+        "description": "Retrieves the configuration files associated with the connector. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.4+.",
+        "operationId": "getConnectorFileListAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/connectors/{connectorType}/files/{fileType}": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get connector configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorFlatFileConfigurationResponse"
+                }
+              }
+            },
+            "description": "The list of configuration values from the file."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requestor does not have the required permissions for the gateway's space."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "path",
+            "name": "connectorType",
+            "schema": {
+              "enum": [
+                "file-connector",
+                "rest-connector",
+                "odbc-connector"
+              ],
+              "type": "string"
+            },
+            "required": true,
+            "description": "The connector type to retrieve"
+          },
+          {
+            "in": "path",
+            "name": "fileType",
+            "schema": {
+              "enum": [
+                "CustomTypesMapping",
+                "PlainTextConfiguration",
+                "AllowedPaths",
+                "AllowedDrivers",
+                "AllowedDsns",
+                "CustomAllowedExtensions"
+              ],
+              "type": "string"
+            },
+            "required": true,
+            "description": "The type of file to retrieve"
+          }
+        ],
+        "description": "Retrieves the configuration items in the flat file for the specified connector. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.4+.",
+        "operationId": "getConnectorFlatFileConfigurationAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "put": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Set connector configuration",
+        "responses": {
+          "204": {
+            "description": "Updated."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          },
+          {
+            "in": "path",
+            "name": "connectorType",
+            "schema": {
+              "enum": [
+                "file-connector",
+                "rest-connector",
+                "odbc-connector"
+              ],
+              "type": "string"
+            },
+            "required": true,
+            "description": "The connector type to update"
+          },
+          {
+            "in": "path",
+            "name": "fileType",
+            "schema": {
+              "enum": [
+                "CustomTypesMapping",
+                "PlainTextConfiguration",
+                "AllowedPaths",
+                "AllowedDrivers",
+                "AllowedDsns",
+                "CustomAllowedExtensions"
+              ],
+              "type": "string"
+            },
+            "required": true,
+            "description": "The file type to update"
+          }
+        ],
+        "description": "Completely replaces the contents of the connector's configuration file. Partial updates are not supported. Requestor must be assigned the `TenantAdmin` role and needs to be either a Gateway's space owner or a member in the Gateway's space with `Can Consume Data` role. Available in Direct Access Gateway V1.7.4+.",
+        "operationId": "putConnectorFlatFileConfigurationAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConfigurationFlatFileRequest"
+              }
+            }
+          },
+          "description": "The contents of the file to be updated"
+        },
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/connectors/file-connector/files/allowed-paths": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get file connector allowed paths configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileConnectorAllowedPathsResponse"
+                }
+              }
+            },
+            "description": "The list of configuration values from the file."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID"
+          }
+        ],
+        "description": "Retrieves the allowed paths settings for the File Connector. Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.6+.",
+        "operationId": "getConnectorFileListAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "put": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Set file connector allowed paths configuration",
+        "responses": {
+          "204": {
+            "description": "Updated."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent id"
+          }
+        ],
+        "description": "Completely replaces the contents of the allowed paths configuration file for the File Connector. Partial updates are not supported. Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.6+.",
+        "operationId": "putConnectorFlatFileConfigurationAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFileConnectorAllowedPathsRequest"
+              }
+            }
+          },
+          "description": "The contents of the file to be updated"
+        },
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/connectors/odbc-connector/files/custom-data-type-mappings": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get connector type mapping configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OdbcCustomDataTypeResponse"
+                }
+              }
+            },
+            "description": "The list of configuration values from the file."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID."
+          }
+        ],
+        "description": "Retrieves the custom data type mapping settings for the Generic ODBC Connector. Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.5+.",
+        "operationId": "getOdbcCustomTypeMappingsAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "put": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Set connector type mapping configuration",
+        "responses": {
+          "204": {
+            "description": "Updated."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID."
+          }
+        ],
+        "description": "Completely replaces the contents of the custom data type mapping configuration file for the Generic ODBC connector. Partial updates are not supported. There are property naming differences between the API and the file contents. Use the API property format when making changes. Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.5+.",
+        "operationId": "putOdbcCustomTypeMappingsAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOdbcCustomTypeMappingsRequest"
+              }
+            }
+          },
+          "description": "The contents of the file to be updated."
+        },
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/direct-access-agents/{agentId}/tools/metrics-collector/configuration": {
+      "get": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Get metrics collector settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsCollectorSettingsApiResponseConnectorConfigurationResponse"
+                }
+              }
+            },
+            "description": "The list of configuration values from the file."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID."
+          }
+        ],
+        "description": "Retrieves the settings for the metrics collector. Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.9+.",
+        "operationId": "getMetricsCollectorSettingsAsync",
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "put": {
+        "tags": [
+          "direct-access-agent-configuration"
+        ],
+        "summary": "Set metrics collector settings",
+        "responses": {
+          "204": {
+            "description": "Updated."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Configuration file not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict."
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The agent ID."
+          }
+        ],
+        "description": "Completely replaces the contents of the metrics collector settings configuration file. Partial updates are not supported.  Requestor must be assigned the `TenantAdmin` role. Available in Direct Access Gateway V1.7.9+.",
+        "operationId": "putMetricsCollectorSettingsAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMetricsCollectorSettingsRequest"
+              }
+            }
+          },
+          "description": "The contents of the file to be updated."
+        },
+        "x-qlik-stability": "stable",
+        "x-qlik-visibility": "public",
+        "x-qlik-deprecated": false,
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    }
+  },
+  "openapi": "3.0.0",
+  "components": {
+    "schemas": {
+      "CancelBenchmarkResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusUrl": {
+            "$ref": "#/components/schemas/LinkResponseObject"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfigurationLineBase": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ConfigurationLineNumeric"
+          },
+          {
+            "$ref": "#/components/schemas/ConfigurationLineString"
+          }
+        ],
+        "additionalProperties": false
+      },
+      "ConfigurationLineNumeric": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "connector": {
+            "type": "string",
+            "nullable": true
+          },
+          "uiActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Read",
+                "Write"
+              ],
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "apiActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Read",
+                "Write"
+              ],
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "skipValidation": {
+            "type": "boolean"
+          },
+          "permittedRangeEnd": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingApplication": {
+            "type": "boolean"
+          },
+          "allowMultipleValues": {
+            "type": "boolean"
+          },
+          "applyWithoutRestart": {
+            "type": "boolean"
+          },
+          "permittedRangeStart": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfigurationLineString": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "connector": {
+            "type": "string",
+            "nullable": true
+          },
+          "uiActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Read",
+                "Write"
+              ],
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "apiActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Read",
+                "Write"
+              ],
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "skipValidation": {
+            "type": "boolean"
+          },
+          "permittedValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "pendingApplication": {
+            "type": "boolean"
+          },
+          "allowMultipleValues": {
+            "type": "boolean"
+          },
+          "applyWithoutRestart": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfigurationResponseWithGatewayMetadata": {
+        "type": "object",
+        "properties": {
+          "connectors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorSettings"
+            },
+            "nullable": true
+          },
+          "environment": {
+            "type": "string",
+            "nullable": true
+          },
+          "dcaasSettings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigurationLineBase"
+            },
+            "nullable": true
+          },
+          "productVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectorAgentSettings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigurationLineBase"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectorFlatFileConfigurationResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "errorMessage": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectorSettings": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigurationLineBase"
+            },
+            "nullable": true
+          },
+          "connectorName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorMessage": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorMessage"
+            },
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasErrors": {
+            "type": "boolean",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FileConnectorAllowedPath": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "\\\\\\\\Server\\\\Share\\\\example",
+            "minLength": 1,
+            "description": "The Path property in the File connector allowed paths file."
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "default": "",
+              "description": "Space identifier that has access to this path"
+            },
+            "example": [
+              "Foo",
+              "Bar"
+            ],
+            "nullable": true,
+            "description": "The Spaces property in the File connector allowed paths file."
+          }
+        },
+        "additionalProperties": false
+      },
+      "FileConnectorAllowedPathsResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileConnectorAllowedPath"
+            },
+            "nullable": true
+          },
+          "errorMessage": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetBenchmarkStatusResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "The benchmark name"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "The benchmark status"
+          },
+          "results": {
+            "$ref": "#/components/schemas/GetBenchmarkStatusResults"
+          },
+          "benchmarkId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The benchmark ID"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "The benchmark description"
+          },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true,
+            "description": "Additional details about the benchmark status"
+          },
+          "benchmarkEndTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:54:34.438Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when the benchmark task completed or was cancelled"
+          },
+          "concurrentReloads": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of concurrent benchmarks/reloads observed when this benchmark was started"
+          },
+          "benchmarkStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:51:15.927Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when the benchmark task started execution"
+          },
+          "totalBytesRequested": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The total bytes requested to be transferred during the benchmark"
+          },
+          "getReloadSlotEndTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:51:22Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when get reload slot completed"
+          },
+          "dataGenerationEndTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:51:40Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when data generation completed"
+          },
+          "getReloadSlotStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:51:20Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when get reload slot started"
+          },
+          "dataGenerationStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:51:23Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when data generation started"
+          }
+        },
+        "description": "Represents the status and performance data for a benchmark task.",
+        "additionalProperties": false
+      },
+      "GetBenchmarkStatusResults": {
+        "type": "object",
+        "properties": {
+          "latency": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The latency in ms measured during data transmission"
+          },
+          "throughput": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The data throughput in KB/s measured during data transmission"
+          },
+          "connectorLatency": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "The average latency in ms measured on the connector side during data transmission. Null if no connector benchmark data is available."
+          },
+          "totalBytesTransferred": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The total number of bytes successfully transferred during data transmission"
+          },
+          "dataTransmissionEndTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:54:34.437Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when data transmission completed"
+          },
+          "dataTransmissionStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-03-11T20:52:05.308Z",
+            "nullable": true,
+            "description": "The ISO 8601 formatted timestamp when data transmission start"
+          }
+        },
+        "description": "Contains throughput, latency, transfer volume, and transmission timing for a benchmark.",
+        "additionalProperties": false
+      },
+      "LinkResponseObject": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string",
+            "nullable": true,
+            "description": "The URL to the related resource"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorConnectorConfigurationApiResponse": {
+        "type": "object",
+        "required": [
+          "metricsCollectionEnabled",
+          "scrapeIntervalSeconds"
+        ],
+        "properties": {
+          "scrapeIntervalSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "default": 30,
+            "description": "Frequency in seconds at which metrics are collected from this connector."
+          },
+          "metricsCollectionEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Indicates whether metrics collection is enabled for this connector."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorConnectorConfigurationsApiResponse": {
+        "type": "object",
+        "properties": {
+          "fileConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "odbcConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "restConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "systemMetrics": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "connectorAgent": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "sapBwConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "sapSqlConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          },
+          "sapPackageConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationApiResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorIndividualConnectorConfigurationRequest": {
+        "type": "object",
+        "required": [
+          "metricsCollectionEnabled",
+          "scrapeIntervalSeconds"
+        ],
+        "properties": {
+          "scrapeIntervalSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "default": 30,
+            "description": "Frequency in seconds at which metrics are collected from this connector."
+          },
+          "metricsCollectionEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Indicates whether metrics collection is enabled for this connector."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorSettings": {
+        "type": "object",
+        "required": [
+          "baseScrapeIntervalSeconds",
+          "dataRetentionCheckIntervalMinutes",
+          "enabled",
+          "localDataRetentionDays",
+          "port"
+        ],
+        "properties": {
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "default": 5052,
+            "description": "The port number that the metrics collector API will run on.\nThis must match the port that the SYSTEM connector runs on to enable network metrics collection."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Indicates whether the metrics collector is enabled."
+          },
+          "localDataRetentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "default": 30,
+            "description": "The number of days to retain local data."
+          },
+          "baseScrapeIntervalSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "description": "The base interval in seconds for the metrics collection loop.\nThis defines how frequently the collector checks whether to scrape each connector, not the interval at which each connector is scraped. Must be equal to or less than the lowest individual connector scrape interval."
+          },
+          "localDatabaseFileLocation": {
+            "type": "string",
+            "default": "",
+            "nullable": true,
+            "description": "The file location for the local metrics database. If not specified, defaults to `%ProgramData%\\Qlik\\Gateway\\tmp`."
+          },
+          "dataRetentionCheckIntervalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "default": 60,
+            "description": "The interval in minutes the metrics collector checks for and deletes old data."
+          },
+          "localDataRetentionDatabaseSizeInMb": {
+            "type": "integer",
+            "format": "int32",
+            "default": 500,
+            "description": "The maximum size of the local database in megabytes."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorSettingsApiResponse": {
+        "type": "object",
+        "properties": {
+          "connectorConfigurations": {
+            "$ref": "#/components/schemas/MetricsCollectorConnectorConfigurationsApiResponse"
+          },
+          "metricsCollectorSettings": {
+            "$ref": "#/components/schemas/MetricsCollectorSettings"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetricsCollectorSettingsApiResponseConnectorConfigurationResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/MetricsCollectorSettingsApiResponse"
+          },
+          "errorMessage": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OdbcCustomDataType": {
+        "type": "object",
+        "required": [
+          "id",
+          "nativeDataType",
+          "qlikDataType"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "Amazon Athena ODBC (x64)",
+            "minLength": 1,
+            "description": "The Identifier property in the ODBC custom data type mapping file."
+          },
+          "bit": {
+            "type": "boolean",
+            "example": true,
+            "description": "The IsBit property in the ODBC custom data type mapping file."
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "description": "The Size property in the ODBC custom data type mapping file."
+          },
+          "qlikDataType": {
+            "type": "string",
+            "example": "String",
+            "minLength": 1,
+            "description": "The QlikDataType property in the ODBC custom data type mapping file."
+          },
+          "nativeDataType": {
+            "type": "string",
+            "example": "varchar",
+            "minLength": 1,
+            "description": "The NativeDataType property in the ODBC custom data type mapping file."
+          }
+        },
+        "additionalProperties": false
+      },
+      "OdbcCustomDataTypeResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OdbcCustomDataType"
+            },
+            "nullable": true
+          },
+          "errorMessage": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Operation": {
+        "type": "object",
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "add",
+              "replace",
+              "remove"
+            ],
+            "type": "string"
+          },
+          "path": {
+            "enum": [
+              "AGENT_LOG_LEVEL",
+              "AGENT_HEALTH_FAIL_MINUTES_LIMIT",
+              "AGENT_LOG_OPTIONS",
+              "EXTEND_FIRST_REQUEST_TIMEOUT",
+              "RELOAD_CACHE_MEMORY_MB",
+              "DCAAS_LOG_LEVEL",
+              "ODBC_LOG_LEVEL",
+              "ODBC_MAX_PROCESS_COUNT",
+              "ODBC_PROCESS_ISOLATION_MODE",
+              "ODBC_RELOAD_SESSION_LIFE",
+              "SAPBW_LOG_LEVEL",
+              "SAPBW_MAX_PROCESS_COUNT",
+              "SAPBW_PROCESS_ISOLATION_MODE",
+              "SAPSQL_LOG_LEVEL",
+              "SAPSQL_MAX_PROCESS_COUNT",
+              "SAPSQL_PROCESS_ISOLATION_MODE",
+              "SAPPACKAGE_LOG_LEVEL",
+              "SAPPACKAGE_MAX_PROCESS_COUNT",
+              "SAPPACKAGE_PROCESS_ISOLATION_MODE",
+              "FILE_LOG_LEVEL",
+              "FILE_MAX_PROCESS_COUNT",
+              "FILE_PROCESS_ISOLATION_MODE",
+              "REST_LOG_LEVEL",
+              "REST_MAX_PROCESS_COUNT",
+              "REST_PROCESS_ISOLATION_MODE",
+              "ODBC_TABLES_LIMIT_FOR_GENERICODBC",
+              "OVERRIDE_CHUNKS_CACHE_DIR",
+              "CHUNK_RECOVERY_RESUME_THRESHOLD_MINUTES",
+              "REST_ALLOW_LOCALHOST_CONNECTION",
+              "OPTIONAL_CAPABILITIES",
+              "AGENT_LOG_MAX_FILE_SIZE_MB",
+              "AGENT_LOG_RETENTION_DAYS",
+              "METRICS_LOG_MAX_FILE_SIZE_MB",
+              "METRICS_LOG_RETENTION_DAYS",
+              "DCAAS_LOG_RETENTION_DAYS",
+              "ODBC_LOG_RETENTION_DAYS",
+              "SAPBW_LOG_RETENTION_DAYS",
+              "SAPSQL_LOG_RETENTION_DAYS",
+              "SAPPACKAGE_LOG_RETENTION_DAYS",
+              "REST_LOG_RETENTION_DAYS",
+              "FILE_LOG_RETENTION_DAYS",
+              "BENCHMARK_LOAD_PERFORMANCE_METRICS_RECORDING_ENABLED",
+              "BENCHMARK_RETENTION_CLEANUP_ENABLED",
+              "BENCHMARK_RETENTION_DAYS",
+              "BENCHMARK_RETENTION_CHECK_INTERVAL_MINUTES",
+              "BENCHMARK_RETENTION_DB_SIZE_MB",
+              "BENCHMARK_RETENTION_CLEANUP_BATCH_SIZE"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PatchOperationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PatchOperationValidationResult"
+            },
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "httpStatusCode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedPatchError": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchOperationValidationResult": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/Operation"
+          },
+          "validationResult": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RunBenchmarkResponse": {
+        "type": "object",
+        "properties": {
+          "benchmarkId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateConfigurationFlatFileRequest": {
+        "type": "object",
+        "properties": {
+          "contentsToSave": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "C:\\\\filepath",
+              "description": "Individual lines of the file. Must be escaped when sending as json."
+            },
+            "nullable": true
+          }
+        },
+        "description": "The request to update a connector flat file",
+        "additionalProperties": false
+      },
+      "UpdateFileConnectorAllowedPathsRequest": {
+        "type": "object",
+        "properties": {
+          "fileConnectorAllowedPaths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileConnectorAllowedPath"
+            },
+            "nullable": true
+          }
+        },
+        "description": "The request to update file connector allowed paths configuration",
+        "additionalProperties": false
+      },
+      "UpdateMetricsCollectorConnectorConfigurationsRequest": {
+        "type": "object",
+        "required": [
+          "connectorAgent",
+          "fileConnector",
+          "odbcConnector",
+          "restConnector",
+          "sapBwConnector",
+          "sapPackageConnector",
+          "sapSqlConnector",
+          "systemMetrics"
+        ],
+        "properties": {
+          "fileConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "odbcConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "restConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "systemMetrics": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "connectorAgent": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "sapBwConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "sapSqlConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          },
+          "sapPackageConnector": {
+            "$ref": "#/components/schemas/MetricsCollectorIndividualConnectorConfigurationRequest"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateMetricsCollectorSettings": {
+        "type": "object",
+        "required": [
+          "baseScrapeIntervalSeconds",
+          "dataRetentionCheckIntervalMinutes",
+          "enabled",
+          "localDatabaseFileLocation",
+          "localDataRetentionDays",
+          "port"
+        ],
+        "properties": {
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "default": 5052,
+            "maximum": 65535,
+            "minimum": 1,
+            "description": "The port number that the metrics collector API will run on.\nThis must match the port that the SYSTEM connector runs on to enable network metrics collection."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "maximum": 1,
+            "minimum": 0,
+            "description": "Indicates whether the metrics collector is enabled."
+          },
+          "localDataRetentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "default": 30,
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "The number of days to retain local data."
+          },
+          "baseScrapeIntervalSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1,
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "The base interval in seconds for the metrics collection loop.\nThis defines how frequently the collector checks whether to scrape each connector, not the interval at which each connector is scraped. Must be equal to or less than the lowest individual connector scrape interval."
+          },
+          "localDatabaseFileLocation": {
+            "type": "string",
+            "default": "",
+            "description": "The file location for the local metrics database. If not specified, defaults to `C:\\ProgramData\\Qlik\\Gateway\\tmp`."
+          },
+          "dataRetentionCheckIntervalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "default": 60,
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "The interval in minutes the metrics collector checks for and deletes old data."
+          },
+          "localDataRetentionDatabaseSizeInMb": {
+            "type": "integer",
+            "format": "int32",
+            "default": 500,
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "The maximum size of the local database in megabytes. Default is 500 MB."
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateMetricsCollectorSettingsRequest": {
+        "type": "object",
+        "required": [
+          "connectorConfigurations",
+          "metricsCollectorSettings"
+        ],
+        "properties": {
+          "connectorConfigurations": {
+            "$ref": "#/components/schemas/UpdateMetricsCollectorConnectorConfigurationsRequest"
+          },
+          "metricsCollectorSettings": {
+            "$ref": "#/components/schemas/UpdateMetricsCollectorSettings"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateOdbcCustomTypeMappingsRequest": {
+        "type": "object",
+        "properties": {
+          "odbcCustomDataTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OdbcCustomDataType"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{tenant}.{region}.qlikcloud.com",
+      "variables": {
+        "region": {
+          "default": "us",
+          "description": "The region the tenant is hosted in"
+        },
+        "tenant": {
+          "default": "your-tenant",
+          "description": "Name of the tenant that will be called"
+        }
+      }
+    }
+  ]
+}

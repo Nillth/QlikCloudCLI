@@ -1,0 +1,30 @@
+# Build and test output
+**/bin/
+**/obj/
+/artifacts/
+/QlikCloudCLI/dist/
+**/TestResults/
+*.binlog
+*.trx
+*.nupkg
+*.snupkg
+*.zip
+*.log
+
+# Local editors and credentials
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+.env
+.env.*
+*.pfx
+*.p12
+*.key
+*.pem
+*.local.json
+
+# Transactional generator leases
+.*.qlikcloud-generator.lock
+.*.qlikcloudcli-generator.lock

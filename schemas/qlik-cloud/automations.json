@@ -1,0 +1,2448 @@
+{
+  "info": {
+    "title": "automations",
+    "version": ""
+  },
+  "paths": {
+    "/api/v1/automations": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "List automations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationList"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "example": "eyJpZCI6MjIwMjA5MDgsIl9wb2ludHNUb05leHRJdGVtcyI6dHJ1ZX0"
+            },
+            "required": false,
+            "description": "Pagination cursor returned from a previous request."
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string",
+              "example": "name eq \"My Automation\" and runMode eq \"scheduled\" and ownerId eq \"sWYAHxZxhtcmBT7Ptc5xJ5I6N7HxwnEy\""
+            },
+            "required": false,
+            "description": "Allowed filters: `name`, `runMode`, `lastRunStatus`, `ownerId`, `spaceId`."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "example": 50,
+              "maximum": 200,
+              "minimum": 1
+            },
+            "required": false,
+            "description": "The number of automations to retrieve."
+          },
+          {
+            "in": "query",
+            "name": "listAll",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "required": false,
+            "description": "When true, list all automations. Restricted to tenant admins and analytics admins."
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "enum": [
+                "id",
+                "name",
+                "runMode",
+                "state",
+                "createdAt",
+                "updatedAt",
+                "lastRunAt",
+                "lastRunStatus",
+                "+id",
+                "+name",
+                "+runMode",
+                "+state",
+                "+createdAt",
+                "+updatedAt",
+                "+lastRunAt",
+                "+lastRunStatus",
+                "-id",
+                "-name",
+                "-runMode",
+                "-state",
+                "-createdAt",
+                "-updatedAt",
+                "-lastRunAt",
+                "-lastRunStatus",
+                "maxConcurrentRuns",
+                "+maxConcurrentRuns",
+                "-maxConcurrentRuns"
+              ],
+              "type": "string",
+              "default": "id",
+              "example": "-name"
+            },
+            "required": false,
+            "description": "The field to sort by, with +- prefix indicating sort order. (`?sort=-name` => sort on the `name` field using descending order)."
+          }
+        ],
+        "description": "Retrieves a list of the automations that the requesting user has access to.",
+        "operationId": "getAutomations",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "GET:/workflows/automations"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Create an automation",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationDetailResponseObject"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "description": "Creates a new automation. The requesting user must be assigned the `AutomationCreator` role or have at least one of the following scopes: `automations`, `admin.automations`, `automations.private` or `automations.shared`.",
+        "operationId": "createAutomation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationDetailRequestObject"
+              }
+            }
+          },
+          "required": true,
+          "description": "Automation object to create"
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Get an automation",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationDetailResponseObject"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Retrieves the full definition of an automation. The requesting user must be the owner of the automation and either be assigned one of the roles: `AutomationsCreator`, `TenantAdmin` or have at least one of the following scopes (depending on whether the automation is in a private or shared space): `automations`, `automations.private` or `automations.shared`.",
+        "operationId": "getAutomation",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "GET:/workflows/automations/{id}"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "put": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Update an automation",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationDetailResponseObject"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Updates the full definition of an automation. The requesting user must be the owner of the automation and either be assigned the `AutomationCreator` role or have at least one of the following scopes: `automations`, `admin.automations`, `automations.private` or `automations.shared`.",
+        "operationId": "updateAutomation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationDetailUpdateRequestObject"
+              }
+            }
+          },
+          "required": true,
+          "description": "Automation object to update"
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "PUT:/workflows/automations/{id}"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      },
+      "delete": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Delete an automation",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Deletes an automation. The requesting user must meet at least one of the following conditions:\n- be the owner of the automation\n- be assigned one of the following roles: `AnalyticsAdmin`, `TenantAdmin`\n- have at least one of the following scopes: `admin.automations`, `admin.automations:strict`, `automations.private`, or `automations.shared`",
+        "operationId": "deleteAutomation",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "DELETE:/workflows/automations/{id}"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/change-owner": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Change automation owner",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Changes the owner of an automation to another user. This action removes the history and change logs of this automation. All linked connections used in the automation are detached and not moved to the new owner. The requesting user must be assigned `TenantAdmin` role or have at least one of the following scopes: `admin.automations`, `admin.automations:strict`.",
+        "operationId": "automationChangeOwner",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "example": "sWYAHxZxhtcmBT7Ptc5xJ5I6N7HxwnEy",
+                    "description": "The unique identifier of the new owner."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/change-owner"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/change-space": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Change automation space",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Changes the space of an automation by specifying a new space.",
+        "operationId": "automationChangeSpace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "spaceId"
+                ],
+                "properties": {
+                  "spaceId": {
+                    "type": "string",
+                    "example": "5f0f78b239ff4f0001234567",
+                    "description": "The unique identifier of the new space."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/change-space"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/copy": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Duplicate an automation",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "00000000-0000-0000-0000-000000000000",
+                      "description": "The unique identifier for the automation."
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Duplicates an existing automation.",
+        "operationId": "copyAutomation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the new automation."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/copy"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/disable": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Disable an automation",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Disables an automation so that it cannot be run. To disable an automation, the requesting user must meet at least one of the following conditions:\n- be the owner of the automation\n- be assigned one of the following roles: `TenantAdmin`, `AnalyticsAdmin`\n- have at least one of the following scopes: `admin.automations`, `admin.automations:strict`, `automations.private`, or `automations.shared`",
+        "operationId": "disableAutomation",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/disable"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/enable": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Enable an automation",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Enables an automation so that it can be run. To enable an automation, the requesting user must meet at least one of the following conditions:\n- be the owner of the automation\n- be assigned one of the following roles: `AnalyticsAdmin`, `TenantAdmin`\n- have at least one of the following scopes: `admin.automations`, `admin.automations:strict`, `automations.private`, or `automations.shared`",
+        "operationId": "enableAutomation",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/enable"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/actions/move": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Change automation owner",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Changes the owner of an automation to another user. This action removes the history and change logs of this automation. All linked connections used in the automation are detached and not moved to the new owner. The requesting user must be assigned `TenantAdmin` role or have at least one of the following scopes: `admin.automations`, `admin.automations:strict`.",
+        "operationId": "moveAutomation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "example": "sWYAHxZxhtcmBT7Ptc5xJ5I6N7HxwnEy"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/actions/move"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/runs": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "List automation runs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "example": "eyJpZCI6MjIwMjA5MDgsIl9wb2ludHNUb05leHRJdGVtcyI6dHJ1ZX0"
+            },
+            "required": false,
+            "description": "Pagination cursor returned from a previous request."
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string",
+              "example": "status eq \"finished\""
+            },
+            "required": false,
+            "description": "Allowed filters: `status`, `context`, `startTime`, `title`, `spaceId`, `ownerId`, `executedById`, `billable`."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "example": 10,
+              "maximum": 200,
+              "minimum": 1
+            },
+            "required": false,
+            "description": "The number of runs to retrieve."
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "enum": [
+                "id",
+                "status",
+                "startTime",
+                "-id",
+                "-status",
+                "-startTime",
+                "+id",
+                "+status",
+                "+startTime"
+              ],
+              "type": "string",
+              "default": "id",
+              "example": "-id"
+            },
+            "required": false,
+            "description": "The field to sort by, with +- prefix indicating sort order. (`?query=-startTime` => sort on the `startTime` field using descending order)."
+          }
+        ],
+        "description": "Retrieves a list of runs for a specific automation. The requesting user must be the owner of the automation, or be assigned the one of roles: `TenantAdmin`, `AnalyticsAdmin`. Alternatively, the user must have at least one of the following scopes: `admin.automation-runs`, `automation-runs.private`, or `automation-runs.shared`.",
+        "operationId": "getRuns",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "GET:/workflows/automations/{id}/runs"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      },
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Run an automation",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetailResponseObject"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          }
+        ],
+        "description": "Creates a run for a specific automation. Depending on the space the automation belongs to, the requesting user must meet the following requirement:\n- Private space: be the owner of the automation and have the `automations.private` scope\n- Shared space: be editor or operator in shared space and have `automations.shared` scope.",
+        "operationId": "createRun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunDetailRequestObject"
+              }
+            }
+          },
+          "required": true,
+          "description": "Run object to create"
+        },
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/runs"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/runs/{runId}": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Get an automation run",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetailResponseObject"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the run."
+          }
+        ],
+        "description": "Retrieves a specific run for an automation. Depending on the space the automation belongs to, the requesting user must meet the following requirement:\n- Private space: be the owner of the automation and have the `automations.private` scope\n- Shared space: be editor or operator in shared space and have `automations.shared` scope.",
+        "operationId": "getRun",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "GET:/workflows/automations/{id}/runs/{runId}"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      }
+    },
+    "/api/v1/automations/{id}/runs/{runId}/actions/export": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Export automation run log",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "example": "https://{tenantname}.{region}.qlikcloud.com/api/v1/automations/{id}/runs/{runId}/debug"
+                    }
+                  }
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the run."
+          }
+        ],
+        "description": "Retrieves the URL for the debug log of a specific automation run. Depending on the space the automation belongs to, the requesting user must meet the following requirement:\n- Private space: be the owner of the automation and have the `automations.private` scope\n- Shared space: be editor or operator in shared space and have `automations.shared` scope.",
+        "operationId": "exportRun",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/runs/{runId}/actions/export"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/runs/{runId}/actions/retry": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Retry an automation run",
+        "responses": {
+          "204": {
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the run."
+          }
+        ],
+        "description": "Retries a specific run by creating a new run using the same inputs. Depending on the space the automation belongs to, the requesting user must meet the following requirement:\n- Private space: be the owner of the automation and have the `automations.private` scope\n- Shared space: be editor or operator in shared space and have `automations.shared` scope.",
+        "operationId": "retryRun",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/runs/{runId}/actions/retry"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/{id}/runs/{runId}/actions/stop": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Stop an automation run",
+        "responses": {
+          "204": {
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the automation."
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "schema": {
+              "type": "string",
+              "example": "00000000-0000-0000-0000-000000000000"
+            },
+            "required": true,
+            "description": "The unique identifier for the run."
+          }
+        ],
+        "description": "Forcefully stops an automation run immediately. Depending on the space the automation belongs to, the requesting user must meet the following requirement:\n- Private space: be the owner of the automation and have the `automations.private` scope\n- Shared space: be editor or operator in shared space and have `automations.shared` scope.",
+        "operationId": "stopRun",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "POST:/workflows/automations/{id}/runs/{runId}/actions/stop"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "2",
+          "limit": 100
+        }
+      }
+    },
+    "/api/v1/automations/usage": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Get automation usage metrics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageList"
+                }
+              }
+            },
+            "description": "OK Response"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "dateRange": {
+                "value": "date ge \"2025-08-07\" and date le \"2025-08-12\"",
+                "summary": "Filter metrics by date range"
+              },
+              "singleName": {
+                "value": "name eq \"runs\"",
+                "summary": "Filter metrics by a name"
+              },
+              "nameAndDateRange": {
+                "value": "name eq \"duration\" and date ge \"2025-08-07\" and date le \"2025-08-12\"",
+                "summary": "Filter metrics by name and date range"
+              },
+              "nameAndSpecificDate": {
+                "value": "name eq \"runs\" and date eq \"2025-08-07\"",
+                "summary": "Filter metrics by name and specific date"
+              }
+            },
+            "required": true,
+            "description": "Indicates how the metrics should be filtered using a SCIM-style expression. Available parameters:\n- name (specify one or more enums to return specific metrics. Supported enum values: `runs`, `scheduledRuns`, `triggeredRuns`, `webhookRuns`, `duration`, `bandwidthIn`, `bandwidthOut`)\n- date (return a metric for a specific date or range of dates, e.g. \"2025-08-01\")"
+          },
+          {
+            "in": "query",
+            "name": "breakdownBy",
+            "schema": {
+              "type": "string",
+              "example": "automation"
+            },
+            "required": false,
+            "description": "If specified, result will be broken apart for each automation"
+          }
+        ],
+        "description": "Retrieves paginated usage metrics for automations. The requesting user must be assigned the `TenantAdmin` or `AnalyticsAdmin` role.",
+        "operationId": "getUsageMetrics",
+        "x-qlik-deprecated": true,
+        "x-qlik-visibility": "public",
+        "x-qlik-stability": "stable",
+        "x-qlik-replaced-by": [
+          {
+            "namespace": "workflows",
+            "uniqueIdentifier": "GET:/workflows/automations/usage"
+          }
+        ],
+        "x-qlik-tier": {
+          "tier": "1",
+          "limit": 1000
+        }
+      }
+    }
+  },
+  "openapi": "3.0.0",
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Bad Request"
+      },
+      "Forbidden": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Forbidden"
+      },
+      "InternalServerError": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Internal Server Error"
+      },
+      "NotFound": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Not found"
+      },
+      "ServiceUnavailable": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Service Unavailable"
+      },
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Unauthorized"
+      }
+    },
+    "schemas": {
+      "AutomationDetailRequestObject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleRequestObject"
+            }
+          },
+          "workspace": {
+            "type": "object",
+            "description": "The workspace generated by the Qlik Automate editor."
+          },
+          "description": {
+            "type": "string"
+          },
+          "maxConcurrentRuns": {
+            "type": "integer",
+            "default": 1,
+            "example": 10,
+            "minimum": 1,
+            "description": "Maximum number of concurrent runs allowed for this automation. The maximum value is defined in automations settings."
+          }
+        }
+      },
+      "AutomationDetailResponseObject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "e0e720d0-4947-11ec-a1d2-9559fa35801d",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the automation."
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unavailable",
+              "disabled"
+            ],
+            "type": "string",
+            "default": "available",
+            "example": "available",
+            "description": "The state of the automation."
+          },
+          "lastRun": {
+            "$ref": "#/components/schemas/RunDetailResponseObject"
+          },
+          "ownerId": {
+            "type": "string",
+            "example": "sWYAHxZxhtcmBT7Ptc5xJ5I6N7HxwnEy",
+            "readOnly": true,
+            "description": "The unique identifier of the owner of the automation."
+          },
+          "runMode": {
+            "enum": [
+              "manual",
+              "scheduled",
+              "triggered",
+              "webhook"
+            ],
+            "type": "string",
+            "example": "triggered",
+            "readOnly": true,
+            "description": "Defines how the automation run is started."
+          },
+          "spaceId": {
+            "type": "string",
+            "example": "5f0f78b239ff4f0001234567",
+            "readOnly": true,
+            "description": "The unique identifier of the space that contains the automation."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "lastRunAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true,
+            "description": "The date and time when the last automation run was finished."
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleResponseObject"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "workspace": {
+            "type": "object",
+            "description": "The workspace generated by the Qlik Automate editor."
+          },
+          "snippetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "e0e720d0-4947-11ec-a1d2-9559fa35801d"
+            ],
+            "readOnly": true,
+            "description": "A list of snippets that were detected in the workspace. This includes snippet blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the automation."
+          },
+          "endpointIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "9d94bef0-b28c-11eb-8dba-01593c457362",
+              "53a6fb70-b28f-11eb-b601-b545a40867e0"
+            ],
+            "readOnly": true,
+            "description": "A list of endpoints that were detected in the workspace. This includes endpoints present in blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "connectorIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "0d87808f-27c0-11ea-921c-022e6b5ea1e2",
+              "0d86ee8a-27c0-11ea-921c-022e6b5ea1e2"
+            ],
+            "readOnly": true,
+            "description": "A list of connectors that were detected in the workspace. This includes connectors present in blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "lastRunStatus": {
+            "enum": [
+              "failed",
+              "finished",
+              "finished with warnings",
+              "must stop",
+              "not started",
+              "paused",
+              "running",
+              "starting",
+              "stopped",
+              "exceeded limit"
+            ],
+            "type": "string",
+            "example": "finished",
+            "readOnly": true,
+            "description": "The status of the last run of the automation."
+          },
+          "executionToken": {
+            "type": "string",
+            "example": "aZXuEogT9X3le0k0WXMBnzuYKq4xRlkDnurjs8NVhEAAW1BYx8C1PpIl3ielgRb1",
+            "readOnly": true,
+            "description": "Execution token required to authorize the execution of the automation."
+          },
+          "maxConcurrentRuns": {
+            "type": "integer",
+            "example": 10,
+            "readOnly": true,
+            "description": "Maximum number of concurrent runs allowed for this automation."
+          }
+        }
+      },
+      "AutomationDetailUpdateRequestObject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleRequestObject"
+            }
+          },
+          "workspace": {
+            "type": "object",
+            "description": "The workspace generated by the Qlik Automate editor."
+          },
+          "description": {
+            "type": "string"
+          },
+          "maxConcurrentRuns": {
+            "type": "integer",
+            "default": 1,
+            "example": 10,
+            "minimum": 1,
+            "description": "Maximum number of concurrent runs allowed for this automation. The maximum value is defined in automations settings."
+          }
+        }
+      },
+      "AutomationList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationListObject"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "AutomationListObject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "e0e720d0-4947-11ec-a1d2-9559fa35801d",
+            "readOnly": true,
+            "description": "The unique identifier for the automation."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the automation.",
+            "x-qlik-filterable": true
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unavailable",
+              "disabled"
+            ],
+            "type": "string",
+            "default": "available",
+            "example": "available",
+            "description": "The state of the automation."
+          },
+          "lastRun": {
+            "$ref": "#/components/schemas/RunDetailResponseObject"
+          },
+          "ownerId": {
+            "type": "string",
+            "example": "sWYAHxZxhtcmBT7Ptc5xJ5I6N7HxwnEy",
+            "readOnly": true,
+            "description": "The unique identifier of the owner of the automation.",
+            "x-qlik-filterable": true
+          },
+          "runMode": {
+            "enum": [
+              "manual",
+              "scheduled",
+              "triggered",
+              "webhook"
+            ],
+            "type": "string",
+            "example": "triggered",
+            "readOnly": true,
+            "description": "Defines how the automation run is started.",
+            "x-qlik-filterable": true
+          },
+          "spaceId": {
+            "type": "string",
+            "example": "5f0f78b239ff4f0001234567",
+            "readOnly": true,
+            "description": "The unique identifier of the space that contains the automation.",
+            "x-qlik-filterable": true
+          },
+          "duration": {
+            "type": "integer",
+            "example": "9001",
+            "readOnly": true,
+            "description": "Duration of the last run, indicated in seconds. Calculated from start and stop times.",
+            "x-qlik-filterable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "lastRunAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true,
+            "description": "The date and time when the last automation run was finished."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "workspace": {
+            "type": "object",
+            "example": {},
+            "readOnly": true,
+            "description": "The workspace contains the JSON representation of the used blocks"
+          },
+          "snippetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "e0e720d0-4947-11ec-a1d2-9559fa35801d"
+            ],
+            "readOnly": true,
+            "description": "A list of snippets that were detected in the workspace. This includes snippet blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the automation."
+          },
+          "endpointIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "9d94bef0-b28c-11eb-8dba-01593c457362",
+              "53a6fb70-b28f-11eb-b601-b545a40867e0"
+            ],
+            "readOnly": true,
+            "description": "A list of endpoints that were detected in the workspace. This includes endpoints present in blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "connectorIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "0d87808f-27c0-11ea-921c-022e6b5ea1e2",
+              "0d86ee8a-27c0-11ea-921c-022e6b5ea1e2"
+            ],
+            "readOnly": true,
+            "description": "A list of connectors that were detected in the workspace. This includes connectors present in blocks that are not connected to other blocks. Order of GUIDs is not guaranteed."
+          },
+          "lastRunStatus": {
+            "enum": [
+              "failed",
+              "finished",
+              "finished with warnings",
+              "must stop",
+              "not started",
+              "paused",
+              "running",
+              "starting",
+              "stopped",
+              "exceeded limit"
+            ],
+            "type": "string",
+            "example": "finished",
+            "readOnly": true,
+            "description": "The status of the last run of the automation.",
+            "x-qlik-filterable": true
+          },
+          "executionToken": {
+            "type": "string",
+            "example": "aZXuEogT9X3le0k0WXMBnzuYKq4xRlkDnurjs8NVhEAAW1BYx8C1PpIl3ielgRb1",
+            "readOnly": true
+          },
+          "maxConcurrentRuns": {
+            "type": "integer",
+            "example": 10,
+            "readOnly": true,
+            "description": "Maximum number of concurrent runs allowed for automation."
+          }
+        }
+      },
+      "AutomationUsageObject": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string",
+            "example": "00000000-0000-0000-0000-000000000000",
+            "description": "The unique identifier for the automation."
+          },
+          "name": {
+            "type": "string",
+            "example": "My Automation.",
+            "maxLength": 50,
+            "description": "The name for the automation."
+          },
+          "ownerId": {
+            "type": "string",
+            "example": "KP1zJiPDn0gsla236GmETadFcxBW-J8F",
+            "description": "The unique identifier for the user who owns the automation"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "title"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The unique code for the error"
+          },
+          "title": {
+            "type": "string",
+            "description": "A summary of what went wrong"
+          },
+          "detail": {
+            "type": "string",
+            "description": "May be used to provide additional details"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            }
+          },
+          "traceId": {
+            "type": "string",
+            "description": "A way to trace the source of the error."
+          }
+        }
+      },
+      "Links": {
+        "properties": {
+          "next": {
+            "$ref": "#/components/schemas/PaginationLink"
+          },
+          "prev": {
+            "$ref": "#/components/schemas/PaginationLink"
+          }
+        }
+      },
+      "PaginationLink": {
+        "properties": {
+          "href": {
+            "type": "string",
+            "nullable": true,
+            "description": "The URL to a resource request"
+          }
+        }
+      },
+      "RunDetailRequestObject": {
+        "type": "object",
+        "required": [
+          "context"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "d452d100-9b0b-11ec-b199-8323e1031c3e",
+            "readOnly": true
+          },
+          "context": {
+            "enum": [
+              "api"
+            ],
+            "type": "string",
+            "example": "api",
+            "description": "The source that triggers the automation will set the context."
+          }
+        }
+      },
+      "RunDetailResponseObject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "d452d100-9b0b-11ec-b199-8323e1031c3e",
+            "readOnly": true,
+            "description": "The unique identifier of the run."
+          },
+          "error": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Details of the error."
+            },
+            "nullable": true,
+            "description": "List of errors that occurred during the automation run."
+          },
+          "title": {
+            "type": "string",
+            "description": "The title of the automation run."
+          },
+          "status": {
+            "enum": [
+              "failed",
+              "finished",
+              "finished with warnings",
+              "must stop",
+              "not started",
+              "running",
+              "starting",
+              "stopped",
+              "exceeded limit",
+              "queued"
+            ],
+            "type": "string",
+            "description": "The current status of the automation run."
+          },
+          "context": {
+            "enum": [
+              "test_run",
+              "editor",
+              "detail",
+              "api_sync",
+              "api_async",
+              "webhook",
+              "lookup"
+            ],
+            "type": "string",
+            "description": "The source that triggers the automation will set the context. Certain contexts impact the execution of an automation (for example, The \"test_run\" context will not process all results when listing items)."
+          },
+          "metrics": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "connectorGuid",
+                    "rxBytes",
+                    "txBytes"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "snippetBlock",
+                        "endpointBlock"
+                      ],
+                      "type": "string",
+                      "example": "endpointBlock",
+                      "description": "Type of the block."
+                    },
+                    "rxBytes": {
+                      "type": "integer",
+                      "example": 18329921,
+                      "description": "Total amount of received bytes sent by the current block."
+                    },
+                    "txBytes": {
+                      "type": "integer",
+                      "example": 18329921,
+                      "description": "Total amount of sent bytes sent by the current block."
+                    },
+                    "apiCalls": {
+                      "type": "integer",
+                      "example": 40,
+                      "description": "API calls to external resources made by the current block."
+                    },
+                    "snippetId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "Unique identifier for the snippet block used within the execution."
+                    },
+                    "endpointId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "Unique identifier for the endpoint block used within the execution."
+                    },
+                    "connectorId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "Unique identifier for the connector used within the block of the execution."
+                    }
+                  },
+                  "description": "Information of the ended execution per block."
+                },
+                "description": "List of blocks used during execution. Note: this list currently only contains endpointBlocks and snippetBlocks"
+              },
+              "network": {
+                "type": "object",
+                "properties": {
+                  "rxBytes": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "The number of received bytes."
+                  },
+                  "txBytes": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "The number of sent bytes."
+                  }
+                }
+              },
+              "totalApiCalls": {
+                "type": "integer",
+                "default": 0,
+                "description": "The number of API calls made."
+              }
+            }
+          },
+          "ownerId": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The unique identifier of the owner of the automation run."
+          },
+          "spaceId": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The unique identifier of the space in which the automation run is created."
+          },
+          "testRun": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is a test run."
+          },
+          "archived": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is archived."
+          },
+          "stopTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "nullable": true,
+            "readOnly": true,
+            "description": "The date and time at which the automation run stopped."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "isTestRun": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is a test run."
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "nullable": true,
+            "readOnly": true,
+            "description": "The date and time at which the automation run started."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "isArchived": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is archived."
+          },
+          "executedById": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The unique identifier of the user who executed the automation run."
+          },
+          "scheduledStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "nullable": true,
+            "readOnly": true,
+            "description": "The date and time at which the automation run is scheduled to start."
+          }
+        }
+      },
+      "RunList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunListObject"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "RunListObject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "d452d100-9b0b-11ec-b199-8323e1031c3e",
+            "readOnly": true
+          },
+          "error": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Details of the error."
+            },
+            "nullable": true,
+            "description": "List of errors that occurred during the automation run."
+          },
+          "title": {
+            "type": "string",
+            "description": "The title of the automation run."
+          },
+          "status": {
+            "enum": [
+              "failed",
+              "finished",
+              "finished with warnings",
+              "must stop",
+              "not started",
+              "running",
+              "starting",
+              "stopped",
+              "exceeded limit",
+              "queued"
+            ],
+            "type": "string",
+            "description": "The current status of the automation run.",
+            "x-qlik-filterable": true
+          },
+          "context": {
+            "enum": [
+              "test_run",
+              "editor",
+              "detail",
+              "api_sync",
+              "api_async",
+              "webhook",
+              "lookup"
+            ],
+            "type": "string",
+            "description": "The context set by the source that triggers the automation.",
+            "x-qlik-filterable": true
+          },
+          "ownerId": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The unique identifier of the owner of the automation run.",
+            "x-qlik-filterable": true
+          },
+          "spaceId": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The unique identifier of the space in which the automation run is created.",
+            "x-qlik-filterable": true
+          },
+          "testRun": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is a test run."
+          },
+          "archived": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is archived."
+          },
+          "duration": {
+            "type": "integer",
+            "example": "9001",
+            "readOnly": true,
+            "description": "Duration of the run, indicated in seconds. Calculated from start and stop times",
+            "x-qlik-filterable": true
+          },
+          "stopTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true,
+            "description": "The date and time at which the automation run stopped."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "isTestRun": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is a test run."
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true,
+            "description": "The date and time at which the automation run started."
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2021-12-23T12:28:21Z",
+            "readOnly": true
+          },
+          "isArchived": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Indicates if this automation run is archived."
+          },
+          "executedById": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true,
+            "description": "The unique identifier of the user who executed the automation run.",
+            "x-qlik-filterable": true
+          },
+          "scheduledStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2021-12-23T12:28:21Z",
+            "nullable": true,
+            "readOnly": true,
+            "description": "The date and time at which the automation run is scheduled to start."
+          }
+        }
+      },
+      "ScheduleRequestObject": {
+        "type": "object",
+        "properties": {
+          "stopAt": {
+            "type": "string",
+            "example": "2022-12-01 00:00:00"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2022-01-01 00:00:00"
+          },
+          "interval": {
+            "type": "integer",
+            "example": 60,
+            "description": "Interval in seconds; must be a multiple of 60. Values are rounded to the nearest minute (≥30 seconds rounded up, otherwise down)."
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Europe/Stockholm"
+          },
+          "recurrence": {
+            "type": "string",
+            "example": "RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=9;BYMINUTE=0;BYSECOND=0",
+            "description": "The RRULE that defines when the automation runs. When provided, it takes precedence over interval."
+          }
+        }
+      },
+      "ScheduleResponseObject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "d452d100-9b0b-11ec-b199-8323e1031c3e",
+            "readOnly": true
+          },
+          "stopAt": {
+            "type": "string",
+            "example": "2022-12-01 00:00:00"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2021-12-01 00:00:00"
+          },
+          "interval": {
+            "type": "integer",
+            "example": 60,
+            "description": "Interval in seconds."
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Europe/Stockholm"
+          },
+          "nextRunAt": {
+            "type": "string",
+            "example": "2021-12-01 00:00:00"
+          },
+          "recurrence": {
+            "type": "string",
+            "example": "RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=9;BYMINUTE=0;BYSECOND=0",
+            "description": "The RRULE that defines when the automation runs."
+          },
+          "lastStartedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2022-01-01T12:28:21Z"
+          }
+        }
+      },
+      "UsageList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageObject"
+            }
+          }
+        }
+      },
+      "UsageObject": {
+        "type": "object",
+        "required": [
+          "name",
+          "date",
+          "value"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2021-12-15",
+            "description": "The date for the metric",
+            "x-qlik-filterable": true
+          },
+          "name": {
+            "enum": [
+              "runs",
+              "scheduledRun",
+              "triggeredRun",
+              "webhookRuns",
+              "duration",
+              "bandwidthIn",
+              "bandwidthOut"
+            ],
+            "type": "string",
+            "example": "bandwidthIn",
+            "maxLength": 50,
+            "description": "The name for the metric",
+            "x-qlik-filterable": true
+          },
+          "value": {
+            "type": "integer",
+            "example": 310179713,
+            "description": "The value count of the metric"
+          },
+          "automation": {
+            "$ref": "#/components/schemas/AutomationUsageObject"
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{tenant}.{region}.qlikcloud.com",
+      "variables": {
+        "region": {
+          "default": "us",
+          "description": "The region the tenant is hosted in"
+        },
+        "tenant": {
+          "default": "your-tenant",
+          "description": "Name of the tenant that will be called"
+        }
+      }
+    }
+  ]
+}
