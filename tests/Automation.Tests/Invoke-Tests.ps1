@@ -9,8 +9,9 @@ $passed = 0
 function Assert-Test([bool] $Condition, [string] $Message) { if (-not $Condition) { throw $Message }; $script:passed++ }
 function Assert-Throws([scriptblock] $Action, [string] $Message) { $thrown = $false; try { & $Action } catch { $thrown = $true }; Assert-Test $thrown $Message }
 function Save-Schema([string] $Directory, [string] $Name, [hashtable] $Paths) {
-    $null = [IO.Directory]::CreateDirectory($Directory)
-    Write-ReleaseJson (Join-Path $Directory ($Name + '.json')) @{ openapi = '3.0.0'; paths = $Paths }
+    $path = Join-Path $Directory ($Name + '.json')
+    $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
+    Write-ReleaseJson $path @{ openapi = '3.0.0'; paths = $Paths }
 }
 try {
     $before = Join-Path $temporary 'before'
@@ -35,6 +36,55 @@ try {
     Assert-Test ($removed.RemovedRoutes.Count -eq 1 -and $removed.RemovedRoutes[0] -eq 'widgets DELETE /widgets/{id}') 'Removed method on an existing path must be detected.'
     Assert-Throws { Assert-CompatibleSchemaUpdate $removed } 'Removed operations must block automatic release.'
     Assert-Throws { Assert-CompatibleSchemaUpdate ([pscustomobject]@{ RemovedApis = @('widgets'); RemovedRoutes = @() }) } 'Removed API documents must block automatic release.'
+
+    $nestedBefore = Join-Path $temporary 'nested-before'
+    $nestedAfter = Join-Path $temporary 'nested-after'
+    Save-Schema $nestedBefore 'widgets' @{ '/widgets' = @{ get = @{} } }
+    Save-Schema $nestedBefore 'analytics/widgets' @{ '/widgets' = @{ get = @{} } }
+    Save-Schema $nestedBefore 'analytics/manifest' @{ '/manifests' = @{ get = @{} } }
+    Write-ReleaseJson (Join-Path $nestedBefore 'manifest.json') @{ archiveSha256 = ('1' * 64) }
+    Copy-SchemaSnapshot -Source $nestedBefore -Destination $nestedAfter
+    $nestedOriginal = Get-SchemaInventory $nestedBefore
+    Assert-Test ($nestedOriginal.Apis.Count -eq 3 -and $nestedOriginal.Apis.ContainsKey('widgets') -and $nestedOriginal.Apis.ContainsKey('analytics/widgets') -and $nestedOriginal.Apis.ContainsKey('analytics/manifest')) 'Relative API identities must retain namespaces; only the root manifest is excluded.'
+    Assert-Test ((Test-Path -LiteralPath (Join-Path $nestedAfter 'analytics/widgets.json')) -and (Test-Path -LiteralPath (Join-Path $nestedAfter 'manifest.json'))) 'Snapshot copy must preserve nested schema paths and copy the root manifest.'
+    Assert-Test (-not (Compare-SchemaInventory $nestedOriginal (Get-SchemaInventory $nestedAfter)).Changed) 'Recursive snapshot copying must preserve the content digest.'
+    Save-Schema $nestedAfter 'analytics/widgets' @{ '/widgets' = @{ get = @{}; post = @{} } }
+    $nestedDifference = Compare-SchemaInventory $nestedOriginal (Get-SchemaInventory $nestedAfter)
+    Assert-Test ($nestedDifference.ChangedApis.Count -eq 1 -and $nestedDifference.ChangedApis[0] -ceq 'analytics/widgets' -and $nestedDifference.AddedRoutes[0] -ceq 'analytics/widgets POST /widgets') 'A nested API change must not be attributed to a root API with the same filename.'
+    Remove-Item -LiteralPath (Join-Path $nestedAfter 'analytics/manifest.json')
+    $nestedRemoved = Compare-SchemaInventory $nestedOriginal (Get-SchemaInventory $nestedAfter)
+    Assert-Test ($nestedRemoved.RemovedApis.Count -eq 1 -and $nestedRemoved.RemovedApis[0] -ceq 'analytics/manifest' -and $nestedRemoved.RemovedRoutes[0] -ceq 'analytics/manifest GET /manifests') 'Nested API and operation removals must retain their namespace.'
+    Assert-Throws { Assert-CompatibleSchemaUpdate $nestedRemoved } 'A removed nested API must block automatic release.'
+
+    $caseTarget = Join-Path $temporary 'case-target'
+    Save-Schema $caseTarget 'Analytics/other' @{ '/other' = @{ get = @{} } }
+    Assert-Throws { Copy-SchemaSnapshot -Source $nestedBefore -Destination $caseTarget } 'Snapshot copy must reject namespace casing collisions before writing any files.'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $caseTarget 'widgets.json'))) 'Failed copy preflight must leave the destination unchanged.'
+
+    $linkSource = Join-Path $temporary 'link-source'
+    $null = [IO.Directory]::CreateDirectory($linkSource)
+    $link = Join-Path $linkSource 'linked'
+    $null = New-Item -ItemType Junction -Path $link -Target $nestedBefore
+    try {
+        Assert-Throws { Get-SchemaInventory $linkSource } 'Snapshot inventory must reject reparse-point directories.'
+        Assert-Throws { Copy-SchemaSnapshot -Source $linkSource -Destination (Join-Path $temporary 'link-copy') } 'Snapshot copy must reject reparse-point source directories.'
+        Assert-Throws { Copy-SchemaSnapshot -Source $nestedBefore -Destination (Join-Path $link 'new') } 'Snapshot copy must reject destination ancestors that are reparse points.'
+    }
+    finally { Remove-Item -LiteralPath $link -Force }
+
+    $firstArchive = Join-Path $temporary 'schemas-first.zip'
+    $secondArchive = Join-Path $temporary 'schemas-second.zip'
+    [IO.Compression.ZipFile]::CreateFromDirectory($nestedBefore, $firstArchive, [IO.Compression.CompressionLevel]::NoCompression, $false)
+    foreach ($file in Get-ChildItem -LiteralPath $nestedBefore -File -Recurse) { [IO.File]::SetLastWriteTimeUtc($file.FullName, [datetime]::new(2024, 1, 1, 0, 0, 0, [DateTimeKind]::Utc)) }
+    Write-ReleaseJson (Join-Path $nestedBefore 'manifest.json') @{ archiveSha256 = ('2' * 64) }
+    [IO.Compression.ZipFile]::CreateFromDirectory($nestedBefore, $secondArchive, [IO.Compression.CompressionLevel]::Optimal, $false)
+    Assert-Test ((Get-FileHash -LiteralPath $firstArchive).Hash -cne (Get-FileHash -LiteralPath $secondArchive).Hash) 'Archive fixture bytes must differ through timestamps, compression, and provenance metadata.'
+    $firstExtracted = Join-Path $temporary 'first-extracted'
+    $secondExtracted = Join-Path $temporary 'second-extracted'
+    [IO.Compression.ZipFile]::ExtractToDirectory($firstArchive, $firstExtracted)
+    [IO.Compression.ZipFile]::ExtractToDirectory($secondArchive, $secondExtracted)
+    Assert-Test (-not (Compare-SchemaInventory (Get-SchemaInventory $firstExtracted) (Get-SchemaInventory $secondExtracted)).Changed) 'ZIP and root-manifest metadata changes must not trigger a release when extracted schema content is unchanged.'
+
     Assert-Test ((Get-NextPatchVersion '2.0.9') -eq '2.0.10') 'Patch increments must be numeric.'
     Assert-Throws { Get-NextPatchVersion '2.0.0.1' } 'Four-part versions must not silently change policy.'
     Assert-Throws { Get-NextPatchVersion '2.0.65534' } 'Assembly version overflow must fail.'

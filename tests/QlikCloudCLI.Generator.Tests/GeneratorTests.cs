@@ -8,6 +8,108 @@ namespace QlikCloudCLI.Generator.Tests;
 public sealed class GeneratorTests
 {
     [Fact]
+    public void NamespacedApisCoexistWithLegacyRoutesWithoutDuplicatingPrefixes()
+    {
+        using var workspace = new Workspace();
+        JsonObject manifest = workspace.ReadManifest();
+        manifest["apis"]!.AsArray().Add(new JsonObject
+        {
+            ["api"] = "analytics/widgets",
+            ["operations"] = new JsonArray(
+                Operation("/api/analytics/widgets", "AnalyticsWidgetsGet"),
+                Operation("/api/analytics/widgets/{widgetId}", "AnalyticsWidgetsGet"),
+                Operation("/api/analytics/widgets", "AnalyticsWidgetsPost", "post"),
+                Operation("/api/analytics/widgets/{widgetId}/actions/restore", "AnalyticsWidgetsActionsRestore", "post"))
+        });
+        manifest["apis"]!.AsArray().Add(new JsonObject
+        {
+            ["api"] = "workflows/automations",
+            ["operations"] = new JsonArray(
+                Operation("/api/workflows/automations", "WorkflowsAutomationsGet"),
+                Operation("/api/workflows/automations", "WorkflowsAutomationsPost", "post"))
+        });
+        manifest["apis"]!.AsArray().Add(new JsonObject
+        {
+            ["api"] = "analytics/discovery-agent/adaptive-cards",
+            ["operations"] = new JsonArray(Operation("/api/analytics/discovery-agent/adaptive-cards", "AnalyticsDiscoveryAgentAdaptiveCards"))
+        });
+        workspace.WriteManifest(manifest);
+
+        CommandInventory inventory = workspace.Generate();
+        Assert.Equal(11, inventory.Operations.Count);
+        Assert.Equal(9, inventory.CommandCount);
+        Assert.Equal(4, inventory.Constructors.Count);
+        EndpointCommandGroup legacy = Assert.Single(inventory.Commands, command => command.CommandName == "Get-QCWidgets");
+        EndpointCommandGroup namespaced = Assert.Single(inventory.Commands, command => command.CommandName == "Get-QCAnalyticsWidgets");
+        Assert.Equal(new[] { "List", "ByWidgetId" }, namespaced.ParameterSetNames);
+        Assert.All(legacy.Operations, operation => Assert.Equal("QlikCloud.Widgets.Client", operation.ClientType));
+        Assert.All(namespaced.Operations, operation => Assert.Equal("QlikCloud.AnalyticsWidgets.Client", operation.ClientType));
+        Assert.Contains(inventory.Commands, command => command.CommandName == "New-QCAnalyticsWidgets");
+        Assert.Contains(inventory.Commands, command => command.CommandName == "Invoke-QCAnalyticsWidgetsActionsRestore");
+        Assert.Contains(inventory.Commands, command => command.CommandName == "New-QCWorkflowsAutomations");
+        Assert.Contains(inventory.Commands, command => command.CommandName == "Get-QCAnalyticsDiscoveryAgentAdaptiveCards");
+        ModelCommand model = Assert.Single(inventory.Constructors, command => command.CommandName == "New-QCAnalyticsWidgetsWidgetRequestObject");
+        Assert.Equal("analytics/widgets", model.Api);
+        Assert.Equal("global::QlikCloud.AnalyticsWidgets.WidgetRequest", model.ModelType);
+        Assert.Equal("widgets", Assert.Single(inventory.Constructors, command => command.CommandName == "New-QCWidgetsWidgetRequestObject").Api);
+        Assert.Equal("workflows/automations", Assert.Single(inventory.Constructors, command => command.CommandName == "New-QCWorkflowsAutomationsAutomationRequestObject").Api);
+        string generated = File.ReadAllText(Path.Combine(workspace.Output, "src", "Get-QCAnalyticsWidgets.cs"));
+        Assert.Contains("new global::QlikCloud.AnalyticsWidgets.Client", generated);
+        Assert.Contains("client.AnalyticsWidgetsGetAsync(WidgetId, cancellationToken)", generated);
+        Assert.Contains("/api/analytics/widgets/{widgetId}", generated);
+        using JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Output, "commands.json")));
+        Assert.Contains(catalog.RootElement.GetProperty("constructors").EnumerateArray(), item => item.GetProperty("api").GetString() == "analytics/widgets");
+    }
+
+    [Fact]
+    public void NamespacedNonAdjacentEvaluationRoutesRequireAnExplicitNamingPolicy()
+    {
+        using var workspace = new Workspace();
+        JsonObject manifest = workspace.ReadManifest();
+        manifest["apis"]!.AsArray().Add(new JsonObject
+        {
+            ["api"] = "analytics/widgets",
+            ["operations"] = new JsonArray(
+                Operation("/api/analytics/widgets/{guid}/evaluations", "AnalyticsWidgetsEvaluationsGet"),
+                Operation("/api/analytics/widgets/evaluations/{id}", "AnalyticsWidgetsEvaluationsGet"))
+        });
+        workspace.WriteManifest(manifest);
+        Assert.Contains("not a direct parent", Assert.Throws<InvalidDataException>(() => workspace.Generate()).Message);
+        Assert.False(Directory.Exists(workspace.Output));
+        File.WriteAllText(workspace.Rules, """
+            {"formatVersion":1,"commandNames":[{"operation":"analytics/widgets GET /api/analytics/widgets/evaluations/{id}","commandName":"Get-QCAnalyticsWidgetsEvaluationsById","reason":"The global evaluation detail is not a child of the app evaluation list route."}]}
+            """);
+        CommandInventory inventory = workspace.Generate();
+        EndpointCommand list = Assert.Single(inventory.Operations, operation => operation.CommandName == "Get-QCAnalyticsWidgetsEvaluations");
+        EndpointCommand detail = Assert.Single(inventory.Operations, operation => operation.CommandName == "Get-QCAnalyticsWidgetsEvaluationsById");
+        Assert.Equal("Default", list.ParameterSetName);
+        Assert.Equal("Default", detail.ParameterSetName);
+        Assert.Equal("analytics/widgets", detail.Api);
+        Assert.Equal("guid", list.Parameters[0].ClrName);
+        Assert.Equal("id", Assert.Single(detail.Parameters).ClrName);
+        Assert.NotNull(detail.NamingReason);
+    }
+
+    [Fact]
+    public void NormalizedNamespaceCollisionFailsBeforeBindingAnApiToAnotherClient()
+    {
+        using var workspace = new Workspace();
+        JsonObject manifest = workspace.ReadManifest();
+        foreach (string api in new[] { "analytics/widgets", "analytics-widgets" })
+            manifest["apis"]!.AsArray().Add(new JsonObject
+            {
+                ["api"] = api,
+                ["operations"] = new JsonArray(Operation("/api/" + api, "AnalyticsWidgetsGet"))
+            });
+        workspace.WriteManifest(manifest);
+        string error = Assert.Throws<InvalidDataException>(() => workspace.Generate()).Message;
+        Assert.Contains("API namespace collision", error);
+        Assert.Contains("analytics/widgets", error);
+        Assert.Contains("analytics-widgets", error);
+        Assert.False(Directory.Exists(workspace.Output));
+    }
+
+    [Fact]
     public void FullInventoryBindsOverloadsCustomMethodsAndTransitiveModels()
     {
         using var workspace = new Workspace();

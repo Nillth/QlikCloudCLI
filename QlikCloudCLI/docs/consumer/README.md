@@ -6,6 +6,8 @@ REST and request-model command nouns begin with `QC`, for example `Get-QCApiKeys
 
 Use `Get-QCCollections` to list collections and `Get-QCCollections -CollectionId $collectionId` to read one. Nested resources keep their own commands: `Get-QCCollectionsItems -CollectionId $collectionId` lists that collection's items; adding `-ItemId $itemId` reads one item. `Get-Command <name> -Syntax` shows the available parameter sets.
 
+Namespaced APIs have distinct command nouns, such as `QCAnalyticsApps` and `QCWorkflowsAutomations`. Existing commands such as `QCApps` remain available. Check the exact route and request model in `commands.json` when choosing between them.
+
 ## Install from the PowerShell Gallery
 
 Install a published release from PSGallery for your Windows user:

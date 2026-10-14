@@ -10,7 +10,7 @@ public sealed class CommandInventory
     public string AssemblySha256 { get; init; } = "";
     public string ClientManifestSha256 { get; init; } = "";
     public string RulesSha256 { get; init; } = "";
-    public string NamingPolicy { get; init; } = "Literal API route nouns omit path placeholders. Direct GET list/detail pairs share List and By<Id> parameter sets; other routes remain separate. Root POST New, action POST Invoke, PUT Set, PATCH Update, DELETE Remove, GET Get; explicit policy resolves incompatible collisions.";
+    public string NamingPolicy { get; init; } = "Literal API route nouns preserve API namespaces and omit transport prefixes and path placeholders. Direct GET list/detail pairs share List and By<Id> parameter sets; other routes remain separate. Root POST New, action POST Invoke, PUT Set, PATCH Update, DELETE Remove, GET Get; explicit policy resolves incompatible collisions.";
     public int CommandCount => Commands.Count;
     public List<EndpointCommandGroup> Commands { get; init; } = [];
     public List<EndpointCommand> Operations { get; init; } = [];

@@ -194,6 +194,8 @@ Public REST and request-model command nouns start with `QC`: for example, `Get-Q
 
 Use the exact current command names; previous long REST and constructor names are not exported as compatibility aliases.
 
+Namespaced Qlik APIs include their namespace in command nouns. Analytics app commands use `QCAnalyticsApps`, while existing app commands use `QCApps`; workflow automation commands use `QCWorkflowsAutomations`. These APIs can coexist and may have different parameters and response models. Find the exact HTTP route in `commands.json` before changing an existing script to a namespaced API. Do not substitute one command or model for another based only on a similar name.
+
 ```powershell
 Get-Command -Module QlikCloudCLI
 Get-Command Get-QCCollections -Syntax
@@ -240,7 +242,7 @@ Constructors end in `Object`; they do not contact the tenant. Names include the 
 
 Supplying the detail identifier selects the detail parameter set; without it, the grouped command uses `List`. List-only filters cannot be combined with detail-only parameters. PowerShell rejects that combination before making a request. Parameters for a parent resource remain required in both nested-resource sets. The same rule does not imply a list route exists for every command: `Get-QCApps -AppId $appId` reads one app; use `Get-QCItems -ResourceType App` for the app catalog.
 
-A few routes retain explicit suffixes because combining their parameters would be ambiguous: `Get-QCAppsReportFiltersById`, `Get-QCDirectAccessAgentsConnectorsFilesByFileType`, `Get-QCSharingTasksExecutionsByExecutionId`, and `Invoke-QCDataFilesActionsChangeSpaceById`. Look them up rather than adding a guessed `ById` suffix. For audits, `Get-QCAudits -AuditId $auditId` selects one audit; the list route's `-Id` remains a filter.
+A few routes retain explicit suffixes because combining their parameters would be ambiguous: `Get-QCAppsReportFiltersById`, `Get-QCDirectAccessAgentsConnectorsFilesByFileType`, `Get-QCSharingTasksExecutionsByExecutionId`, `Invoke-QCDataFilesActionsChangeSpaceById`, and `Get-QCAnalyticsAppsEvaluationsById`. Look them up rather than adding a guessed `ById` suffix. For audits, `Get-QCAudits -AuditId $auditId` selects one audit; the list route's `-Id` remains a filter.
 
 ## List, filter, and export data
 

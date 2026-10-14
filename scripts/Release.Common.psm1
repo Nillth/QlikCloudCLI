@@ -2,24 +2,67 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Assert-SchemaDirectoryPath {
+    param([Parameter(Mandatory)][string] $Path)
+    $directory = [IO.DirectoryInfo]::new([IO.Path]::GetFullPath($Path))
+    while ($null -ne $directory) {
+        if (Test-Path -LiteralPath $directory.FullName) {
+            $entry = Get-Item -LiteralPath $directory.FullName -Force
+            if (-not $entry.PSIsContainer -or ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Schema directory paths cannot contain files or reparse points.' }
+        }
+        $directory = $directory.Parent
+    }
+}
+
+function Get-SchemaFiles {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $Path, [switch] $IncludeDirectories)
+    $root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Path))
+    Assert-SchemaDirectoryPath $root
+    $directory = Get-Item -LiteralPath $root -Force
+    if (-not $directory.PSIsContainer) { throw 'Schema snapshot must be a directory.' }
+    $pending = [Collections.Generic.Stack[IO.DirectoryInfo]]::new()
+    $pending.Push($directory)
+    $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    while ($pending.Count -gt 0) {
+        $directory = $pending.Pop()
+        if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Schema snapshot cannot contain reparse points.' }
+        foreach ($entry in Get-ChildItem -LiteralPath $directory.FullName -Force) {
+            if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Schema snapshot cannot contain reparse points.' }
+            $relative = [IO.Path]::GetRelativePath($root, $entry.FullName).Replace('\', '/')
+            if ([IO.Path]::IsPathRooted($relative) -or $relative -match '(^|/)\.\.(/|$)|:' -or -not $names.Add($relative)) {
+                throw "Unsafe or case-colliding schema path: $relative"
+            }
+            if ($entry.PSIsContainer) {
+                $pending.Push($entry)
+                if ($IncludeDirectories) { [pscustomobject]@{ FullName = $entry.FullName; RelativePath = $relative; IsDirectory = $true } }
+                continue
+            }
+            if ($entry.Extension -ieq '.json') {
+                [pscustomobject]@{ FullName = $entry.FullName; RelativePath = $relative; Api = $relative.Substring(0, $relative.Length - 5); IsDirectory = $false }
+            }
+        }
+    }
+}
+
 function Get-SchemaInventory {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Path)
     $apis = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
     $routes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($file in Get-ChildItem -LiteralPath $Path -File -Filter '*.json' | Sort-Object Name) {
-        if ($file.Name -eq 'manifest.json') { continue }
+    foreach ($file in Get-SchemaFiles $Path | Sort-Object RelativePath -CaseSensitive) {
+        if ($file.RelativePath -ieq 'manifest.json') { continue }
         $content = (Get-Content -LiteralPath $file.FullName -Raw).Replace("`r`n", "`n").Replace("`r", "`n")
         $schema = $content | ConvertFrom-Json -AsHashtable
         if (-not $schema.Contains('paths') -or (-not $schema.Contains('openapi') -and -not $schema.Contains('swagger'))) {
-            throw "Invalid schema: $($file.Name)"
+            throw "Invalid schema: $($file.RelativePath)"
         }
         # Git checkout line endings must not create a weekly false positive.
-        $apis.Add($file.BaseName, [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($content))).ToLowerInvariant())
+        $apis.Add($file.Api, [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($content))).ToLowerInvariant())
         foreach ($route in $schema.paths.Keys) {
             foreach ($method in $schema.paths[$route].Keys) {
                 if ($method -cin @('get','post','put','patch','delete','head','options','trace')) {
-                    $null = $routes.Add("$($file.BaseName) $($method.ToUpperInvariant()) $route")
+                    $null = $routes.Add("$($file.Api) $($method.ToUpperInvariant()) $route")
                 }
             }
         }
@@ -28,6 +71,33 @@ function Get-SchemaInventory {
     $text = (@($apis.Keys | Sort-Object -CaseSensitive | ForEach-Object { "$_ $($apis[$_])" }) -join "`n") + "`n"
     $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($text))).ToLowerInvariant()
     [pscustomobject]@{ Apis = $apis; Routes = $routes; Digest = $digest }
+}
+
+function Copy-SchemaSnapshot {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $Source, [Parameter(Mandatory)][string] $Destination)
+    # Complete both walks before writing so unsafe entries cannot produce a partial copy.
+    $entries = @(Get-SchemaFiles $Source -IncludeDirectories)
+    $files = @($entries | Where-Object { -not $_.IsDirectory })
+    $root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Destination))
+    Assert-SchemaDirectoryPath $root
+    $existing = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    if (Test-Path -LiteralPath $root) {
+        foreach ($entry in Get-SchemaFiles $root -IncludeDirectories) { $existing.Add($entry.RelativePath, $entry.RelativePath) }
+    }
+    foreach ($entry in $entries) {
+        if ($existing.ContainsKey($entry.RelativePath) -and $existing[$entry.RelativePath] -cne $entry.RelativePath) {
+            throw "Schema path casing differs from the saved snapshot: $($entry.RelativePath)"
+        }
+        $target = [IO.Path]::GetFullPath((Join-Path $root $entry.RelativePath))
+        if (-not $target.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Schema copy target is outside the snapshot directory.' }
+        if ((Test-Path -LiteralPath $target) -and (Get-Item -LiteralPath $target -Force).PSIsContainer -ne $entry.IsDirectory) { throw "Schema copy would replace a file with a directory or a directory with a file: $($entry.RelativePath)" }
+    }
+    foreach ($file in $files) {
+        $target = Join-Path $root $file.RelativePath
+        $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+        Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+    }
 }
 
 function Compare-SchemaInventory {
@@ -139,4 +209,4 @@ function Write-ReleaseJson {
     [IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 12) + "`n", [Text.UTF8Encoding]::new($false))
 }
 
-Export-ModuleMember -Function Get-SchemaInventory,Compare-SchemaInventory,Assert-CompatibleSchemaUpdate,Get-NextPatchVersion,Get-ReleaseDisposition,Assert-SafeArchive,Assert-ModuleFileHashes,Assert-ReleaseSigning,Assert-GalleryPackageContent,Write-ReleaseJson
+Export-ModuleMember -Function Get-SchemaInventory,Copy-SchemaSnapshot,Compare-SchemaInventory,Assert-CompatibleSchemaUpdate,Get-NextPatchVersion,Get-ReleaseDisposition,Assert-SafeArchive,Assert-ModuleFileHashes,Assert-ReleaseSigning,Assert-GalleryPackageContent,Write-ReleaseJson

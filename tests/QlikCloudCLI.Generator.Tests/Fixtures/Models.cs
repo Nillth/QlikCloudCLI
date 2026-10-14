@@ -45,3 +45,46 @@ namespace QlikCloud.Widgets
         public static NestedModel FromJson(string json) => new();
     }
 }
+
+namespace QlikCloud.AnalyticsWidgets
+{
+    public sealed class Client
+    {
+        public Task<APIResponse<string>> AnalyticsWidgetsGetAsync(string? filter = null, int? limit = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> AnalyticsWidgetsGetAsync(string widgetId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> AnalyticsWidgetsPostAsync(WidgetRequest body, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> AnalyticsWidgetsActionsRestoreAsync(string widgetId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> AnalyticsWidgetsEvaluationsGetAsync(string guid, int? limit = null, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> AnalyticsWidgetsEvaluationsGetAsync(string id, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+
+    public sealed class WidgetRequest { public string? Name { get; set; } }
+}
+
+namespace QlikCloud.WorkflowsAutomations
+{
+    public sealed class Client
+    {
+        public Task<APIResponse<string>> WorkflowsAutomationsGetAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+        public Task<APIResponse<string>> WorkflowsAutomationsPostAsync(AutomationRequest body, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+
+    public sealed class AutomationRequest { public string? Name { get; set; } }
+}
+
+namespace QlikCloud.AnalyticsDiscoveryAgentAdaptiveCards
+{
+    public sealed class Client
+    {
+        public Task<APIResponse<string>> AnalyticsDiscoveryAgentAdaptiveCardsAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+}

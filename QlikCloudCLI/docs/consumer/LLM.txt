@@ -33,10 +33,19 @@ The module name is still QlikCloudCLI, and DLL names, paths, error identifiers,
 and .NET namespaces/types such as QlikCloud.Common.Connection are unchanged.
 Short command names do not imply a QC namespace or a QC module name.
 
+Preserve API namespaces when selecting commands. The catalog API identity
+analytics/apps differs from apps; their command nouns begin QCAnalyticsApps
+and QCApps, and their CLR models belong to QlikCloud.AnalyticsApps and
+QlikCloud.Apps respectively. Similarly, workflows/automations uses
+QCWorkflowsAutomations. Namespaced and legacy APIs can coexist. Never infer
+a replacement route, reuse a model from the other API, or drop the namespace.
+Match the full catalog api, HTTP method, and path before generating a call.
+
 Explicit route-name exceptions avoid ambiguous parameter unions:
 Get-QCAppsReportFiltersById, Get-QCDirectAccessAgentsConnectorsFilesByFileType,
 Get-QCSharingTasksExecutionsByExecutionId, and
-Invoke-QCDataFilesActionsChangeSpaceById. These exceptions do not establish a
+Invoke-QCDataFilesActionsChangeSpaceById, and Get-QCAnalyticsAppsEvaluationsById.
+These exceptions do not establish a
 general naming rule. Get-QCAudits uses AuditId for the detail route; its List
 set retains Id as the list filter. Never substitute one for the other.
 

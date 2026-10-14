@@ -360,6 +360,24 @@ Test-Case 'Audits retain the Id list filter while AuditId selects the detail rou
     Assert-Equal 2 $fixture.Handler.Count 'Audit commands dispatched more than once.'
 }
 
+if (@($operations | Where-Object api -EQ 'core/ip-policies').Count -gt 0) {
+    Test-Case 'Namespaced commands preserve the API route and typed models in both PowerShell hosts' {
+        $listPolicies = Find-Operation 'core/ip-policies' 'GET' '/api/core/ip-policies'
+        $getPolicy = Find-Operation 'core/ip-policies' 'GET' '/api/core/ip-policies/{id}'
+        $removePolicy = Find-Operation 'core/ip-policies' 'DELETE' '/api/core/ip-policies/{id}'
+        Assert-Equal 'Get-QCCoreIpPolicies' $listPolicies.commandName 'Namespaced command noun changed.'
+        Assert-Equal $listPolicies.commandName $getPolicy.commandName 'Namespaced list/detail routes are not grouped.'
+        $fixture = New-Fixture
+        $fixture.Handler.QueueJson(200, '{"data":[],"links":{"self":{"href":"https://qlikcloud-acceptance.invalid/api/core/ip-policies"}},"totalResults":0}')
+        $result = Invoke-Endpoint $listPolicies @{ Connection = $fixture.Connection; Limit = 1; TotalResults = $false }
+        Assert-Equal 'QlikCloud.CoreIpPolicies' $result.GetType().Namespace 'Namespaced response used another API model.'
+        Assert-Equal '/api/core/ip-policies' ([uri]$fixture.Handler.Requests[0].Uri).AbsolutePath 'Namespace was lost or a v1 prefix was added.'
+        Assert-True ($fixture.Handler.Requests[0].Uri -match '(?:\?|&)totalResults=false(?:&|$)') 'Namespaced request lost explicit false.'
+        Invoke-Endpoint $removePolicy @{ Connection = $fixture.Connection; Id = 'fixture-policy'; WhatIf = $true } | Out-Null
+        Assert-Equal 1 $fixture.Handler.Count 'Namespaced WhatIf issued an HTTP request.'
+    }
+}
+
 Test-Case 'Optional query values preserve false and zero and default results are typed' {
     $fixture = New-Fixture
     $fixture.Handler.QueueJson(200, '{"data":[],"totalResults":0}')

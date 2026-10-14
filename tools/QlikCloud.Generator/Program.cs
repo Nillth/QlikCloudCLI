@@ -14,7 +14,7 @@ public static class Program
         {
             if (args.Length == 0 || args[0] is "help" or "--help")
             {
-                Console.WriteLine("QlikCloud.Generator (custom C# renderer; no NSwag)\n  refresh --output <schema-cache> [--api users,apps] [--sitemap <uri>]\n  generate --schemas <schema-cache> --output <generated-directory> [--api users,apps] [--check] [--templates <directory>] [--rules <file>]\nRefresh downloads public specifications only. Generate is offline. Existing output must be owned by this generator.");
+                Console.WriteLine("QlikCloud.Generator (custom C# renderer; no NSwag)\n  refresh --output <schema-cache> [--api users,analytics/apps] [--archive <uri>]\n  generate --schemas <schema-cache> --output <generated-directory> [--api users,analytics/apps] [--check] [--templates <directory>] [--rules <file>]\nRefresh downloads the public REST specification ZIP. Generate is offline. Existing output must be owned by this generator.");
                 return 0;
             }
             string command = args[0];
@@ -24,10 +24,11 @@ public static class Program
             {
                 string key = args[i];
                 if (key == "--check") { if (!options.TryAdd(key, "true")) throw new ArgumentException("Duplicate option " + key); continue; }
-                if (key is not ("--output" or "--schemas" or "--api" or "--sitemap" or "--templates" or "--rules") || ++i == args.Length) throw new ArgumentException("Unknown option or missing value: " + key);
+                if (key is not ("--output" or "--schemas" or "--api" or "--archive" or "--templates" or "--rules") || ++i == args.Length) throw new ArgumentException("Unknown option or missing value: " + key);
                 if (!options.TryAdd(key, args[i])) throw new ArgumentException("Duplicate option " + key);
             }
             string output = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Required(options, "--output")));
+            if (command == "generate" && options.ContainsKey("--archive")) throw new ArgumentException("--archive is only supported by refresh; generate reads local schemas.");
             string[] selected = options.GetValueOrDefault("--api", "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             string? schemas = command == "generate" ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(Required(options, "--schemas"))) : null;
             if (schemas != null && (output.Equals(schemas, StringComparison.OrdinalIgnoreCase) || output.StartsWith(schemas + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || schemas.StartsWith(output + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("Schema and generated output directories must be separate.");
@@ -37,7 +38,7 @@ public static class Program
             cancelHandler = (_, e) => { e.Cancel = true; try { cancellation.Cancel(); } catch (ObjectDisposedException) { } };
             Console.CancelKeyPress += cancelHandler;
             using var generationLock = SafeOutput.AcquireLock(output);
-            var source = await SchemaDiscovery.LoadAsync(client, schemas, new Uri(options.GetValueOrDefault("--sitemap", "https://qlik.dev/sitemap-index.xml")), selected, cancellation.Token);
+            var source = await SchemaDiscovery.LoadAsync(client, schemas, new Uri(options.GetValueOrDefault("--archive", SchemaDiscovery.DefaultArchiveUrl)), selected, cancellation.Token);
             var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
             var report = new JObject { ["generator"] = "QlikCloud.Generator", ["formatVersion"] = 1, ["command"] = command };
             var inputs = new JArray();

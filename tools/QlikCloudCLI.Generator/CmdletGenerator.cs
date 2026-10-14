@@ -45,6 +45,13 @@ public sealed class CmdletGenerator
             .OrderBy(op => op.Api, StringComparer.Ordinal).ThenBy(op => op.Path, StringComparer.Ordinal).ThenBy(op => op.Verb, StringComparer.Ordinal).ToArray();
         if (operations.Length == 0) throw new InvalidDataException("The client manifest contains no API operations.");
         if (operations.GroupBy(OperationKey, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() != 1)) throw new InvalidDataException("Duplicate operation in client manifest.");
+        var apiByNamespace = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string api in operations.Select(operation => operation.Api).Distinct(StringComparer.Ordinal))
+        {
+            string modelNamespace = "QlikCloud." + TypeNames.Identifier(api);
+            if (!apiByNamespace.TryAdd(modelNamespace, api))
+                throw new InvalidDataException($"API namespace collision between {apiByNamespace[modelNamespace]} and {api}: {modelNamespace}.");
+        }
 
         string[] trusted = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
         var paths = Directory.EnumerateFiles(Path.GetDirectoryName(Path.GetFullPath(assemblyPath))!, "*.dll")
@@ -144,7 +151,7 @@ public sealed class CmdletGenerator
             if (!TypeNames.IsModel(model)) throw new InvalidDataException("Model root is not a constructible request model: " + rule.Type);
             DiscoverModels(model, requiredModels);
         }
-        foreach (Type type in requiredModels.OrderBy(t => t.FullName, StringComparer.Ordinal)) inventory.Constructors.Add(CreateModelCommand(type));
+        foreach (Type type in requiredModels.OrderBy(t => t.FullName, StringComparer.Ordinal)) inventory.Constructors.Add(CreateModelCommand(type, apiByNamespace));
         inventory.Commands.AddRange(CommandGrouping.Create(inventory.Operations, inventory.Warnings));
         var duplicate = inventory.Commands.Select(c => c.CommandName).Concat(inventory.Constructors.Select(c => c.CommandName))
             .GroupBy(n => n, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
@@ -174,7 +181,9 @@ public sealed class CmdletGenerator
     private static HashSet<string> Placeholders(string path) => Regex.Matches(path, "\\{([^}]+)\\}").Select(m => TypeNames.Identifier(m.Groups[1].Value)).ToHashSet(StringComparer.OrdinalIgnoreCase);
     private static string DefaultName(Operation operation)
     {
-        string path = Regex.Replace(operation.Path, "^/api/v[0-9]+/?", "", RegexOptions.CultureInvariant).Trim('/');
+        // Legacy routes use /api/v1/<resource>; namespaced APIs use /api/<namespace>/<resource>.
+        // Keep the namespace in the noun, but never the API transport prefix.
+        string path = Regex.Replace(operation.Path, "^/api/(?:v[0-9]+(?:/|$))?", "", RegexOptions.CultureInvariant).Trim('/');
         string[] parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         string noun = string.Concat(parts.Where(part => !(part.StartsWith('{') && part.EndsWith('}'))).Select(TypeNames.Identifier));
         string api = TypeNames.Identifier(operation.Api);
@@ -199,14 +208,15 @@ public sealed class CmdletGenerator
         foreach (ConstructorInfo constructor in type.GetConstructors()) foreach (ParameterInfo parameter in constructor.GetParameters()) DiscoverModels(parameter.ParameterType, models);
     }
 
-    private static ModelCommand CreateModelCommand(Type type)
+    private static ModelCommand CreateModelCommand(Type type, IReadOnlyDictionary<string, string> apiByNamespace)
     {
         ConstructorInfo[] constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
         ConstructorInfo constructor = constructors.FirstOrDefault(c => c.GetParameters().Length == 0)
             ?? constructors.OrderByDescending(c => c.GetParameters().Length).FirstOrDefault()
             ?? throw new InvalidDataException("Request model has no public constructor: " + type.FullName);
         Type? collectionElement = TypeNames.CollectionElement(type);
-        string api = type.Namespace!["QlikCloud.".Length..];
+        if (!apiByNamespace.TryGetValue(type.Namespace!, out string? api))
+            throw new InvalidDataException("Request model namespace has no API identity in the client manifest: " + type.FullName);
         var command = new ModelCommand
         {
             CommandName = "New-QC" + TypeNames.Identifier(api) + TypeNames.Identifier(type.Name) + "Object", ModelType = TypeNames.Format(type), Api = api,

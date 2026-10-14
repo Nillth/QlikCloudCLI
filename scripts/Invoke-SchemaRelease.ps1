@@ -186,7 +186,7 @@ try {
     $candidateVersion = if ($PublishInitial) { $version } else { Get-NextPatchVersion $version }
     if (Test-GalleryVersion $candidateVersion) { throw "Gallery already contains $candidateVersion; choose a new version through a reviewed source change." }
     # Removals were rejected, so this copy cannot leave stale API documents behind.
-    foreach ($file in Get-ChildItem -LiteralPath $refreshed -File -Filter '*.json') { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $schemaPath $file.Name) -Force }
+    Copy-SchemaSnapshot -Source $refreshed -Destination $schemaPath
     Write-ReleaseJson $versionPath ([ordered]@{ version = $candidateVersion })
     $state = [ordered]@{ formatVersion = 1; version = $candidateVersion; previousVersion = $version; schemaDigest = $current.Digest; changedApis = @($difference.AddedApis) + @($difference.ChangedApis) }
     Write-ReleaseJson $statePath $state

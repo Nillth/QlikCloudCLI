@@ -4,7 +4,7 @@ The repository's MIT license applies to original QlikCloudCLI source. It does no
 
 ## Qlik OpenAPI specifications
 
-`schemas/qlik-cloud/*.json` contains Qlik's published REST OpenAPI documents, with `manifest.json` recording their source identity and hashes. They are downloaded from `https://qlik.dev/specs/rest/{api}.json`; discovery uses Qlik's public sitemap. The original documents remain unchanged on disk. Compatibility corrections are applied in memory by the generator.
+`schemas/qlik-cloud/**/*.json` contains Qlik's published tenant REST OpenAPI documents, with the root `manifest.json` recording their API identities and hashes. Refresh downloads the [official tenant REST OpenAPI ZIP](https://qlik.dev/specs/rest/qlik-cloud-rest-openapi-specs.zip) and preserves namespace subdirectories. JSON formatting is normalized, and `well-known.json` retains the existing `.well-known.json` filename. Schema content is preserved; compatibility corrections are applied in memory by the generator.
 
 Qlik retains its rights in its APIs and documentation. The checked-in documents do not declare an `info.license` or `termsOfService` field. This project does not claim an MIT license or additional redistribution grant for those documents. Refer to Qlik's [REST API documentation](https://qlik.dev/apis/rest/), [API policy](https://qlik.dev/apis/api-policy/), and [Developer Portal Terms of Use](https://qlik.dev/qlik-developer-portal-terms-of-use.pdf) for the applicable upstream terms. Generated API names, descriptions, and model documentation originate from those specifications.
 

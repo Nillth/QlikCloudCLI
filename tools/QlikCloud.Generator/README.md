@@ -7,7 +7,7 @@ Run the following commands from the repository root.
 ## Refresh and generate
 
 ```powershell
-# Explicit network step: discover and download the complete public catalog.
+# Explicit network step: download the published tenant REST schema archive.
 dotnet run --project .\tools\QlikCloud.Generator -c Release -- refresh `
   --output .\schemas\qlik-cloud
 
@@ -22,13 +22,13 @@ dotnet run --project .\tools\QlikCloud.Generator -c Release -- generate `
   --output .\QlikCloud\obj\Generated\Manual\netstandard2.0 --check
 ```
 
-Refresh follows Qlik's sitemap indexes and REST API pages, then downloads `https://qlik.dev/specs/rest/{api}.json`. The `pagination-sorting-filtering` and `rate-limiting` pages are excluded because they are guides without schemas. Failed downloads, malformed schemas, empty discovery, and unmatched API selections fail the operation. The default discovery entry point is `https://qlik.dev/sitemap-index.xml`; `--sitemap <url>` overrides it.
+Refresh downloads Qlik's [tenant REST OpenAPI archive](https://qlik.dev/specs/rest/qlik-cloud-rest-openapi-specs.zip), which Qlik regenerates with each qlik.dev release. `--archive <url>` overrides the archive URL; sitemap discovery is retired. The archive is read without extracting arbitrary files onto disk. Failed downloads, unsafe or duplicate entries, excessive archive sizes, malformed schemas, empty catalogs, and unmatched API selections fail the complete operation.
 
-Omit `--api` for the complete catalog. `--api users,apps` is useful for experiments, but use a separate schema directory: refresh replaces its destination with the complete selected set. The production SDK needs all APIs referenced by its custom code.
+Omit `--api` for the complete tenant catalog. `--api users,analytics/apps` is useful for experiments, but use a separate schema directory: refresh replaces its destination with the complete selected set. The production SDK needs all APIs referenced by its custom code. Organization REST APIs use a separate archive, host, and authentication context and are not included in this tenant snapshot.
 
 The checked-in `schemas/qlik-cloud` snapshot is the default build input. Refresh produces normalized JSON and content hashes without timestamps, so unchanged schema content produces no changes. Review schema diffs alongside build and test results. Newly introduced schema constructs may need a renderer correction before release.
 
-Generation reads root-level schema JSON files, excluding `manifest.json`. `generation-rules.json` records API exclusions, custom operations, and explicit method names. `SchemaTransforms.cs` applies named corrections to a copy of each schema; downloaded documents remain unchanged. `--rules <file>` and `--templates <directory>` select alternate generator inputs.
+Generation reads schema JSON files recursively, excluding the root `manifest.json`. Relative paths preserve logical API identities: `apps.json` and `analytics/apps.json` become `apps` and `analytics/apps`, producing separate `QlikCloud.Apps` and `QlikCloud.AnalyticsApps` clients. The archive's `well-known.json` retains the existing `.well-known` identity. Never flatten namespace directories or infer replacement API routes. `generation-rules.json` records API exclusions, custom operations, and explicit method names. `SchemaTransforms.cs` applies named corrections to a copy of each schema; downloaded documents remain unchanged. `--rules <file>` and `--templates <directory>` select alternate generator inputs.
 
 ## Build and test
 

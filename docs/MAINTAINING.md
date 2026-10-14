@@ -35,7 +35,7 @@ dotnet run --project ./tools/QlikCloud.Generator -c Release -- refresh --output 
 pwsh -NoProfile -File ./scripts/Test-Release.ps1 -ArtifactsPath ./artifacts/schema-validation
 ```
 
-Review the schema documents and `manifest.json` together. Compatibility corrections belong in `SchemaTransforms.cs`, with focused tests. Grouping and route-name exceptions belong in the PowerShell generator's rules. Do not edit generated C# output to repair a schema change.
+Refresh downloads the official tenant REST OpenAPI ZIP. It preserves namespace directories and existing API identities, including `.well-known`. Review the schema documents and `manifest.json` together. Compare normalized schema contents, not ZIP bytes: repackaging the same documents must not create a release. Compatibility corrections belong in `SchemaTransforms.cs`, with focused tests. Grouping and route-name exceptions belong in the PowerShell generator's rules. Do not edit generated C# output to repair a schema change.
 
 Schema snapshots remain upstream Qlik content. Keep their provenance and [third-party notices](../THIRD-PARTY-NOTICES.md) intact. Dependency updates also require reviewing the package's license and notice changes.
 
@@ -43,7 +43,7 @@ Schema snapshots remain upstream Qlik content. Keep their provenance and [third-
 
 `ci.yml` builds and tests pushes and pull requests on a hosted Windows runner with read-only repository permissions. It has no Gallery secret and does not sign or publish packages.
 
-`schema-release.yml` checks for schema changes each Monday at 03:23 UTC and supports manual dispatch. Releases run only for `Nillth/QlikCloudCLI` on `main`, with one release run at a time. An unchanged snapshot creates no version, tag, or package publication. Changed snapshots must pass all release checks before the patch version is advanced.
+`schema-release.yml` checks the tenant REST ZIP for schema changes each Monday at 03:23 UTC and supports manual dispatch. Its inventory includes nested namespace paths, so APIs such as `apps` and `analytics/apps` remain distinct. Releases run only for `Nillth/QlikCloudCLI` on `main`, with one release run at a time. An unchanged snapshot creates no version, tag, or package publication. Changed snapshots must pass all release checks before the patch version is advanced.
 
 GitHub can delay scheduled runs and automatically disables schedules in public repositories after 60 days without repository activity. Check the workflow's status after a quiet period and re-enable it if necessary; manual dispatch remains available. See [GitHub's schedule behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 

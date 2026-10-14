@@ -2,6 +2,11 @@
   "formatVersion": 1,
   "commandNames": [
     {
+      "operation": "analytics/apps GET /api/analytics/apps/evaluations/{id}",
+      "commandName": "Get-QCAnalyticsAppsEvaluationsById",
+      "reason": "An evaluation is fetched globally by Id, while the list route requires an app Guid before /evaluations; these are not a direct parent/detail pair."
+    },
+    {
       "operation": "apps GET /api/v1/apps/{appId}/report-filters/{id}",
       "commandName": "Get-QCAppsReportFiltersById",
       "reason": "Keep the detail route separate because its LoadType2 parameter is a different CLR enum from the list route's LoadType."
