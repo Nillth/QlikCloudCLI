@@ -27,11 +27,17 @@ than inventing a ById command suffix. Constructors still follow
 New-QC<Api><Type>Object, including any ById text within the model name itself.
 Connection lookup and token exchange are Get-QCConnection and Receive-QCToken.
 Connect-QlikCloud and Disconnect-QlikCloud keep their full names. Get-QlikUserAgent
-and Invoke-OpenApp are unchanged. There are no compatibility aliases for the
+and Invoke-OpenApp keep their names. There are no compatibility aliases for the
 previous long REST or constructor names. Do not invent Connect-QC or Disconnect-QC.
 The module name is still QlikCloudCLI, and DLL names, paths, error identifiers,
 and .NET namespaces/types such as QlikCloud.Common.Connection are unchanged.
 Short command names do not imply a QC namespace or a QC module name.
+
+Engine commands use the shared QSE noun prefix, not QC: Open-QSEApp,
+Get-QSEScript, Get-QSESheetList and Close-QSEApp, for example. Read the separate
+engine-commands.json inventory and Get-Command metadata. QlikSenseCLI builds
+with this Engine feature export the same names and parameters. Older installed
+versions might not include it; check before generating a portable script.
 
 Preserve API namespaces when selecting commands. The catalog API identity
 analytics/apps differs from apps; their command nouns begin QCAnalyticsApps
@@ -536,7 +542,7 @@ Initiate an app export        Invoke-QCAppsExport -AppId -NoData $true
 Download temporary content    Get-QCTempContents -Id -> FileResponse
 Download app media            Get-QCAppsMediaFiles -AppId -Path
 Upload/replace app media      Set-QCAppsMediaFiles -AppId -Path -Body
-Open an Engine app            Invoke-OpenApp -AppId -Connection -NoData $true
+Open an Engine app            Open-QSEApp -AppId -Connection [-NoData]
 
 Get-QCApps requires AppId; it has no list operation in this module. Use
 Get-QCItems -ResourceType App for an app catalog page. An app catalog
@@ -673,16 +679,63 @@ finally { $source.Dispose() }
 
 ENGINE AND COMPATIBILITY LIMITS
 
-Invoke-OpenApp returns Qlik.Engine.IApp. Use the bundled QlikSense.NetSDK's
-documented Engine methods and session lifecycle; do not invent REST-style
-cmdlets for Engine methods. NoData and LogWS are bool parameters. REST WhatIf
-does not protect arbitrary calls made on an IApp. Close/dispose the Engine
-session according to that SDK independently of the HTTP connection lifecycle.
-Browser OAuth, token exchange and Engine operations have cancellation limitations
-in their SDK methods. Importing the module or completing REST requests does not
-establish that a specific Engine workflow will work in a tenant. Verify the
-requested Engine methods and session handling separately; do not describe those
-flows as tested unless they were actually exercised.
+The shared initial Engine surface is exactly these 16 commands:
+Open-QSEApp, Close-QSEApp, Get-QSEAppLayout, Get-QSEScript, Test-QSEScript,
+Get-QSEField, Get-QSETable, Test-QSEExpression, Invoke-QSEExpression,
+Get-QSESheetList, Get-QSEBookmarkList, Get-QSEDimensionList, Get-QSEMeasureList,
+Get-QSEMasterObjectList, Get-QSEFieldList, Get-QSEVariableList.
+Do not invent Set-QSEScript, Invoke-QSEReload or other future wrapper commands.
+
+Only connection setup/authentication and target app configuration differ between
+the two platforms. Use Connect-QlikCloud ... -PassThru or Connect-QlikSense ...
+-PassThru, then Open-QSEApp -Connection $connection -AppId $appId. QlikClient is
+an alias for Connection on Open-QSEApp. Without that parameter, Open resolves
+the selected module's default connection. PassThru does not set that default.
+Open returns a live native Qlik.Engine.IApp with callable SDK methods, not a
+REST app record or a wrapper requiring .NativeApp. Each open has isolated state.
+NoData is a switch on Open-QSEApp; its default is false (load data).
+
+All subsequent commands require -App (also pipeline input), and retain its
+original session/connection even if the default changes. Get-QSEScript returns
+one string. Test-QSEScript checks the existing app script and never replaces it.
+Get-QSEField accepts optional Name and State (default '$'); without Name it
+lists fields. Invoke-QSEExpression returns Text, Number and IsNumeric. List
+commands emit detached snapshots, not live content handles. -AsSdkObject
+returns a native SDK list; dispose it after use. Its app also owns its cleanup.
+
+Use this pattern after connecting to either platform:
+```powershell
+$app = $null
+try {
+    $app = Open-QSEApp -Connection $connection -AppId $appId
+    $script = Get-QSEScript -App $app
+    $nativeScript = $app.GetScript()
+    Get-QSESheetList -App $app | Select-Object Id, Title
+    Invoke-QSEExpression -App $app -Expression '1 + 1'
+}
+finally {
+    if ($null -ne $app) { Close-QSEApp -App $app }
+}
+```
+
+Close-QSEApp is idempotent and disposes app/session/retained list resources.
+Disconnecting the owning connection closes its remaining apps too. Closing is
+not rollback. SDK direct calls can mutate content, bypass WhatIf and wrapper
+serialization, and must be sequenced by the caller. Static SDK list helpers are
+C# extension methods: use [Qlik.Sense.Client.AppExtensions]::GetSheetList($app),
+not an invented $app.GetSheetList() instance method. Prefer the list cmdlets.
+
+The same Engine names collide if both modules are imported. Use one selected
+module or qualify ALL Engine commands with their owner (for example
+QlikCloudCLI\Get-QSEScript). Do not pass a handle between modules, processes or
+runspaces, or use an SDK-created external handle with these wrappers.
+
+Engine cmdlets accept TimeoutSeconds (default 120). Timeout/stop bounds the local
+wait; an interrupted operation may invalidate/close its app session. Reopen it
+before more operations. Do not claim server cancellation from a local stop.
+Legacy Invoke-OpenApp remains available; NoData and LogWS there are Booleans.
+Import and REST success do not prove live Engine authorization or compatibility.
+Only describe auth/platform workflows as live-tested when actually exercised.
 
 SCRIPT-GENERATION ACCEPTANCE CHECKLIST
 

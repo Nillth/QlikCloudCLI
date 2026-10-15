@@ -15,6 +15,13 @@ Get-QCCollections -CollectionId $collectionId
 
 Use the [operator guide](QlikCloudCLI/docs/consumer/HOW-TO.md) for installation, authentication, pagination, files, and request bodies. [LLM.txt](QlikCloudCLI/docs/consumer/LLM.txt) explains how script-writing assistants should use the installed command catalog. Every release includes its own `README.md`, `HOW-TO.md`, `LLM.txt`, `COMMANDS.md`, and `commands.json`.
 
+The Engine-enabled source also provides 16 shared `*-QSE*` commands, with the same
+contract as QlikSenseCLI's Engine feature. Scripts use `Open-QSEApp`, inspect the
+app, and call `Close-QSEApp` after either platform's Connect command. The
+[Engine guide](QlikCloudCLI/docs/consumer/HOW-TO.md#open-an-app-in-the-engine-and-close-its-session)
+describes native SDK access and ownership; `engine-commands.json` lists this
+surface separately from generated REST commands.
+
 ## Install
 
 Published releases can be installed from the PowerShell Gallery:

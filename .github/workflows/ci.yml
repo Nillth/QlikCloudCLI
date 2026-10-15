@@ -34,7 +34,7 @@ jobs:
           name: qlikcloud-validation
           path: |
             ${{ runner.temp }}/qlikcloud-ci/test-results
-            ${{ runner.temp }}/qlikcloud-ci/build/**/test-results/*.json
+            ${{ runner.temp }}/qlikcloud-ci/build/**/test-results/**/*.json
             ${{ runner.temp }}/qlikcloud-ci/packages/*.zip
             ${{ runner.temp }}/qlikcloud-ci/packages/*.sha256
           if-no-files-found: warn

@@ -1,10 +1,12 @@
 # QlikCloudCLI
 
-Use Qlik Cloud from PowerShell with typed requests and responses. The module includes REST commands, request-model constructors, connection management, and Engine commands. Related list/detail requests share one command with separate parameter sets. The included `COMMANDS.md` and `commands.json` describe this version's complete inventory.
+Use Qlik Cloud from PowerShell with typed requests and responses. The module includes REST commands, request-model constructors, connection management, and Engine commands. Related list/detail requests share one command with separate parameter sets. The included `COMMANDS.md` and `commands.json` describe the REST surface; `engine-commands.json` lists the shared Engine commands.
 
 REST and request-model command nouns begin with `QC`, for example `Get-QCApiKeys` and `New-QCUsersUserPostSchemaObject`. Connection setup and cleanup remain `Connect-QlikCloud` and `Disconnect-QlikCloud`; use `Get-QCConnection` and `Receive-QCToken` for connection lookup and token exchange. `Get-QlikUserAgent` and `Invoke-OpenApp` retain their names. The module name remains `QlikCloudCLI`.
 
 Use `Get-QCCollections` to list collections and `Get-QCCollections -CollectionId $collectionId` to read one. Nested resources keep their own commands: `Get-QCCollectionsItems -CollectionId $collectionId` lists that collection's items; adding `-ItemId $itemId` reads one item. `Get-Command <name> -Syntax` shows the available parameter sets.
+
+Engine commands use the same `QSE` names as the Engine-enabled QlikSenseCLI module: `Open-QSEApp`, `Get-QSEScript`, `Get-QSESheetList`, and `Close-QSEApp`, for example. After connecting to either platform, the same inspection script can use these commands. See the [Engine guide](HOW-TO.md#open-an-app-in-the-engine-and-close-its-session) for the full surface, native SDK access, and cleanup. Both installed modules must include this shared Engine feature; older releases do not export these commands.
 
 Namespaced APIs have distinct command nouns, such as `QCAnalyticsApps` and `QCWorkflowsAutomations`. Existing commands such as `QCApps` remain available. Check the exact route and request model in `commands.json` when choosing between them.
 
@@ -76,6 +78,7 @@ Get-Command New-QCUsers*Object
 - [HOW-TO.md](HOW-TO.md): authentication, requests, model objects, files, pagination, and connection cleanup.
 - [COMMANDS.md](COMMANDS.md): complete command and REST route index.
 - [commands.json](commands.json): machine-readable command, parameter-set, route, and output metadata.
+- [engine-commands.json](engine-commands.json): shared Engine command names and SDK version.
 - [LLM.txt](LLM.txt): guidance for AI assistants and script authors using this package.
 
 REST commands normally return typed results; `-RawResponse` exposes the response wrapper. Model constructors accept JSON or typed properties. Mutating REST commands support `-WhatIf` and `-Confirm`.

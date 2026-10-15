@@ -16,6 +16,8 @@ namespace QlikCloudCLI.Runtime
     {
         private static readonly object Gate = new object();
         private static readonly string DirectoryPath = Path.GetDirectoryName(typeof(ModuleAssemblyResolver).Assembly.Location);
+        private static readonly string EngineDirectory = Path.Combine(DirectoryPath, "Engine",
+            typeof(object).Assembly.GetName().Name == "mscorlib" ? "Desktop" : "Core");
         private static readonly Dictionary<string, string> Libraries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private static bool initialized;
 
@@ -26,6 +28,9 @@ namespace QlikCloudCLI.Runtime
                 if (initialized) return;
                 foreach (var path in Directory.GetFiles(DirectoryPath, "*.dll"))
                     Libraries[Path.GetFileNameWithoutExtension(path)] = path;
+                if (Directory.Exists(EngineDirectory))
+                    foreach (var path in Directory.GetFiles(EngineDirectory, "*.dll"))
+                        Libraries[Path.GetFileNameWithoutExtension(path)] = path;
                 AppDomain.CurrentDomain.AssemblyResolve += Resolve;
                 // Assemblies remain loaded after Remove-Module. Keep one resolver
                 // for their lifetime, including references held by returned models.
@@ -67,7 +72,8 @@ namespace QlikCloudCLI.Runtime
             {
                 var location = assembly.Location;
                 return !string.IsNullOrEmpty(location) &&
-                    string.Equals(Path.GetDirectoryName(location), DirectoryPath, StringComparison.OrdinalIgnoreCase);
+                    (string.Equals(Path.GetDirectoryName(location), DirectoryPath, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(Path.GetDirectoryName(location), EngineDirectory, StringComparison.OrdinalIgnoreCase));
             }
             catch (NotSupportedException) { return false; }
         }

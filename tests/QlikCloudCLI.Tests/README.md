@@ -29,7 +29,12 @@ The inventory assertion checks every route's `(commandName, parameterSetName)` m
 
 Mock grouping cases exercise `Get-QCCollections` list and item dispatch, preserve list `-Id` filtering while `-CollectionId` selects an item, and test scalar and property ID pipelines. `Get-QCCollectionsItems` retains the mandatory parent collection and selects child detail with `-ItemId`; list false/zero values and each set's typed/raw response survive. Audits retain list `-Id` and use `-AuditId` for detail. Conflicting list/item arguments fail parameter binding before the mock receives any HTTP request. The tests do not promise mixed list/item pipeline records.
 
-The inventory also enforces the `QC` noun prefix for every endpoint and model constructor. Only `Connect-QlikCloud` and `Disconnect-QlikCloud` retain the old prefix; legacy command aliases are not exported. Handwritten connection commands are `Get-QCConnection` and `Receive-QCToken`; `Get-QlikUserAgent` and `Invoke-OpenApp` keep their existing names. The module and CLR namespaces remain `QlikCloudCLI` and `QlikCloud`.
+The inventory also enforces the `QC` noun prefix for every endpoint and model constructor. Only `Connect-QlikCloud` and `Disconnect-QlikCloud` retain the old prefix; legacy command aliases are not exported. Handwritten connection commands are `Get-QCConnection` and `Receive-QCToken`; `Get-QlikUserAgent` and `Invoke-OpenApp` keep their existing names. The 16 shared Engine commands are listed separately in `engine-commands.json`. The module and CLR namespaces remain `QlikCloudCLI` and `QlikCloud`.
+
+`QlikCloudCLI/Build.ps1 -Test` also runs `tests/QlikEngine.Tests` in both supported
+PowerShell editions. That suite opens actual SDK WebSocket sessions against a
+loopback Engine fixture, verifies the common script contract and lifecycle, and
+tests the selected Desktop/Core SDK dependencies. It makes no tenant calls.
 
 This suite validates the package and real PowerShell binding behavior in the selected host. A passing result establishes compatibility for these exercised paths in that exact host, not for untested hosts, live Qlik tenants, browser OAuth or Engine sessions.
 

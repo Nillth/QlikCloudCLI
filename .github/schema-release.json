@@ -1,29 +1,7 @@
 {
   "formatVersion": 1,
-  "version": "2.0.1",
-  "previousVersion": "2.0.0",
+  "version": "2.1.0",
+  "previousVersion": "2.0.1",
   "schemaDigest": "33bea222fd71380402361d3633a8e4eb48fd264812cfbe58a39cc4ed5810c303",
-  "changedApis": [
-    "alerting/sharing-tasks",
-    "analytics/apps",
-    "analytics/change-stores",
-    "analytics/discovery-agent/adaptive-cards",
-    "analytics/odag-apps",
-    "analytics/odag-links",
-    "analytics/odag-requests",
-    "analytics/odag-settings",
-    "connectivity/direct-access-agents",
-    "core/auth-settings",
-    "core/ip-policies",
-    "data-governance/data-products",
-    "data-governance/data-qualities",
-    "data-governance/semantic-types",
-    "data-governance/trust-scores",
-    "scheduling/tasks",
-    "workflows/automation-connections",
-    "workflows/automation-connectors",
-    "workflows/automations",
-    "assistants",
-    "knowledgebases"
-  ]
+  "changedApis": []
 }

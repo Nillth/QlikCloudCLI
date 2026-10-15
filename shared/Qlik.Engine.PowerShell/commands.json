@@ -1,0 +1,22 @@
+{
+  "contractVersion": 1,
+  "sdkVersion": "16.11.0",
+  "commands": [
+    "Open-QSEApp",
+    "Close-QSEApp",
+    "Get-QSEAppLayout",
+    "Get-QSEScript",
+    "Test-QSEScript",
+    "Get-QSEField",
+    "Get-QSETable",
+    "Test-QSEExpression",
+    "Invoke-QSEExpression",
+    "Get-QSESheetList",
+    "Get-QSEBookmarkList",
+    "Get-QSEDimensionList",
+    "Get-QSEMeasureList",
+    "Get-QSEMasterObjectList",
+    "Get-QSEFieldList",
+    "Get-QSEVariableList"
+  ]
+}

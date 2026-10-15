@@ -500,28 +500,55 @@ Stopping a REST command's pipeline requests cancellation of its HTTP operation. 
 
 ## Open an app in the Engine and close its session
 
-`Invoke-OpenApp` returns a `Qlik.Engine.IApp`. It is a separate Engine session, not the REST app response. Use an actual app ID, such as `ResourceId` from an app item. `-NoData` and `-LogWS` are boolean parameters, so pass an explicit value.
+`Open-QSEApp` returns a native `Qlik.Engine.IApp`. Use an actual Engine app ID, such as `ResourceId` from an app item, rather than its REST item ID. It opens a new isolated session with data by default; add the `-NoData` switch for metadata-only work. The session belongs to the connection and runspace that opened it.
+
+The following Engine block works with either QlikCloudCLI or the Engine-enabled QlikSenseCLI. Import the intended module and establish `$connection` with `Connect-QlikCloud ... -PassThru` or `Connect-QlikSense ... -PassThru`, using that platform's authentication parameters. App IDs, permissions, and app contents must also match your target.
 
 ```powershell
 $engineApp = $null
-$engineSession = $null
 try {
-    $engineApp = Invoke-OpenApp -Connection $connection -AppId $env:QLIK_APP_ID -NoData $true
-    $engineSession = $engineApp.Session
-    $layout = $engineApp.GetAppLayout()
-    $layout | Select-Object Title, LastReloadTime, HasData, IsOpenedWithoutData
+    $engineApp = Open-QSEApp -Connection $connection -AppId $env:QLIK_APP_ID
+    Get-QSEAppLayout -App $engineApp
+    Get-QSEScript -App $engineApp
+    Get-QSESheetList -App $engineApp | Select-Object Id, Title
+    Invoke-QSEExpression -App $engineApp -Expression '1 + 1'
+
+    # Direct SDK instance methods remain available on this same app/session.
+    $scriptViaSdk = $engineApp.GetScript()
 }
 finally {
-    try {
-        if ($null -ne $engineApp) { $engineApp.Dispose() }
-    }
-    finally {
-        if ($null -ne $engineSession) { $engineSession.Dispose() }
-    }
+    if ($null -ne $engineApp) { Close-QSEApp -App $engineApp }
 }
 ```
 
-Dispose app handles and the Engine session, then disconnect the REST connection after all its work is finished. Disconnecting REST does not replace the Engine session's lifecycle. OAuth Engine access performs token exchange internally. `Receive-QCToken -TokenPurpose Websocket` exposes that exchange for advanced callers; its returned access token is a secret and should not be printed.
+The common commands are:
+
+| Task | Commands |
+| --- | --- |
+| Open and close an app | `Open-QSEApp`, `Close-QSEApp` |
+| Inspect layout and current script | `Get-QSEAppLayout`, `Get-QSEScript`, `Test-QSEScript` |
+| Inspect the data model | `Get-QSEField`, `Get-QSETable` |
+| Validate and evaluate expressions | `Test-QSEExpression`, `Invoke-QSEExpression` |
+| List app content | `Get-QSESheetList`, `Get-QSEBookmarkList`, `Get-QSEDimensionList`, `Get-QSEMeasureList`, `Get-QSEMasterObjectList`, `Get-QSEFieldList`, `Get-QSEVariableList` |
+
+After opening, pass `-App $engineApp` or pipe the app into an inspection command. `-Connection` also accepts the alias `-QlikClient` on `Open-QSEApp`. Omitting it uses the selected module's default connection; `-PassThru` on either Connect command returns a connection without replacing the default. Changing the default does not retarget an open app.
+
+Expression evaluation returns `Text`, `Number`, and `IsNumeric`. `Test-QSEScript` checks the script currently in the app; it does not upload or replace a local script. List commands return detached entries by default and dispose their temporary list objects. Use `-AsSdkObject` to retain a native list handle:
+
+```powershell
+# Inside the app's try/finally scope:
+$sheets = Get-QSESheetList -App $engineApp -AsSdkObject
+try { $sheets.Layout.AppObjectList.Items }
+finally { $sheets.Dispose() }
+```
+
+`Close-QSEApp` closes the app, its retained lists, and its session. It is safe to call again after closing or after direct SDK disposal. Disconnecting the owning connection also closes its remaining Engine sessions. Close is cleanup, not rollback of changes made through native SDK calls. Those direct calls do not gain `-WhatIf`, the cmdlets' timeout behavior, or automatic operation serialization. Keep live handles in their original process/runspace and sequence native calls with cmdlet calls yourself.
+
+Engine commands accept `-TimeoutSeconds` (default 120). A timeout or pipeline stop ends the local wait; an interrupted app operation may close its session to prevent reuse while a request is still running. Reopen the app after such an interruption. This is not a guarantee that a server-side operation was cancelled.
+
+If both modules are imported, qualify each Engine command with its owning module, for example `QlikCloudCLI\Get-QSEScript -App $engineApp`. Unqualified commands follow PowerShell's normal command precedence. App handles opened by the other module, another runspace, or directly through the SDK are not accepted by these wrappers.
+
+Existing Cloud scripts can continue using `Invoke-OpenApp -NoData $true`; its `NoData` and `LogWS` parameters remain Booleans. Prefer `Open-QSEApp` for new portable scripts. OAuth Engine access performs token exchange internally. `Receive-QCToken -TokenPurpose Websocket` exposes that exchange for advanced callers; its returned access token is a secret and should not be printed.
 
 Engine access depends on your identity's permissions for the selected app and its authentication flow. A successful REST read does not prove that the same connection can open an Engine session; check this separately with an app you can access.
 

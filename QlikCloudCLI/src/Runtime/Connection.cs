@@ -8,7 +8,7 @@ using QlikCloud.Clients;
 
 namespace QlikCloud.Common
 {
-    /// <summary>A reusable client connection; disposing it closes its HTTP transport.</summary>
+    /// <summary>A reusable client connection; disposing it closes its Engine sessions and HTTP transport.</summary>
     public sealed class Connection : IDisposable
     {
         private int disposed;
@@ -24,7 +24,9 @@ namespace QlikCloud.Common
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref disposed, 1) == 0) QCSClient.Config?.httpClient?.Dispose();
+            if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+            try { Qlik.Engine.PowerShell.EngineSessionRegistry.CloseConnection(this); }
+            finally { QCSClient.Config?.httpClient?.Dispose(); }
         }
 
         public override string ToString()

@@ -49,6 +49,9 @@ if ($Test) {
         & $testHost -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot '../tests/QlikCloudCLI.Tests/Invoke-AcceptanceTests.ps1') -ModulePath $manifest -HostPath $testHost -OutputPath $evidence
         if ($LASTEXITCODE -ne 0) { throw "QlikCloudCLI acceptance checks failed in $hostLabel (exit $LASTEXITCODE)." }
     }
+    & (Join-Path $repositoryRoot 'tests/QlikEngine.Tests/Invoke-EngineTests.ps1') `
+        -ModulePath $manifest -HostPath $testHosts.ToArray() `
+        -OutputDirectory (Join-Path (Split-Path (Split-Path -Parent $manifest) -Parent) 'test-results/engine')
 }
 Write-Output $manifest
 $moduleDirectory = Split-Path -Parent $manifest

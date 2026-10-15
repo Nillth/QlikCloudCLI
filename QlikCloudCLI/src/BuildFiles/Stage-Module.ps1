@@ -58,7 +58,10 @@ foreach ($definition in $inventory.commands) {
         throw "Invalid parameter-set inventory for $($definition.commandName)."
     }
 }
-$commands = $restCommands + @($inventory.constructors.commandName) + @(
+$engineCatalogPath = Join-Path $PSScriptRoot '../../../shared/Qlik.Engine.PowerShell/commands.json'
+$engineCatalog = Get-Content -LiteralPath $engineCatalogPath -Raw | ConvertFrom-Json
+if ($engineCatalog.contractVersion -ne 1 -or @($engineCatalog.commands).Count -ne 16) { throw 'Unsupported shared Engine command contract.' }
+$commands = $restCommands + @($inventory.constructors.commandName) + @($engineCatalog.commands) + @(
     'Connect-QlikCloud', 'Disconnect-QlikCloud', 'Get-QCConnection',
     'Receive-QCToken', 'Get-QlikUserAgent', 'Invoke-OpenApp'
 )
@@ -90,6 +93,9 @@ try {
         if ($parts.Length -ne 2) { throw "Malformed resolved module file entry: $entry" }
         $source = [IO.Path]::GetFullPath($parts[0])
         $relative = $parts[1].Replace('\', '/')
+        if ($relative -in @('Qlik.Engine.dll', 'Qlik.Engine.Extensions.dll', 'Qlik.Sense.Client.dll', 'Qlik.Sense.JsonRpc.dll')) {
+            $relative = 'Engine/Desktop/' + $relative
+        }
         if ([IO.Path]::IsPathRooted($relative) -or $relative.Split('/') -contains '..') { throw "Invalid module file name: $relative" }
         # Debug symbols belong to build output, not the consumer distribution.
         if ([IO.Path]::GetExtension($relative) -ieq '.pdb') { continue }
@@ -107,7 +113,13 @@ try {
     foreach ($required in @('QlikCloud.dll', 'QlikCloudCLI.dll')) {
         if (-not $copied.ContainsKey($required)) { throw "Resolved module file list is missing $required" }
     }
+    foreach ($runtime in @('Desktop', 'Core')) {
+        foreach ($assembly in @('Qlik.Engine.dll', 'Qlik.Engine.Extensions.dll', 'Qlik.Sense.Client.dll', 'Qlik.Sense.JsonRpc.dll')) {
+            if (-not $copied.ContainsKey("Engine/$runtime/$assembly")) { throw "The $runtime Engine runtime is incomplete: $assembly" }
+        }
+    }
     Copy-Item -LiteralPath (Join-Path $generatedRoot 'commands.json') -Destination (Join-Path $stage 'commands.json')
+    Copy-Item -LiteralPath $engineCatalogPath -Destination (Join-Path $stage 'engine-commands.json')
     Copy-Item -LiteralPath (Join-Path $generatedRoot 'COMMANDS.md') -Destination (Join-Path $stage 'COMMANDS.md')
     Copy-Item -LiteralPath (Join-Path $buildRoot 'QlikCloud.operations.json') -Destination (Join-Path $stage 'QlikCloud.operations.json')
     if ((Get-FileHash -LiteralPath (Join-Path $stage 'bin/QlikCloud.dll')).Hash -ine $inventory.assemblySha256) {

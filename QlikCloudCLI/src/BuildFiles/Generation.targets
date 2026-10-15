@@ -45,6 +45,9 @@
     <ItemGroup>
       <_QlikCloudModuleFiles Include="$(TargetPath)" />
       <_QlikCloudModuleFiles Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'System.Management.Automation'" />
+      <_QlikCloudModuleFiles Include="$(PkgQlikSense_NetSDK)/lib/netcoreapp3.1/*.dll">
+        <DestinationSubDirectory>Engine/Core/</DestinationSubDirectory>
+      </_QlikCloudModuleFiles>
     </ItemGroup>
     <WriteLinesToFile File="$(_QlikCloudCLIModuleFileList)"
                       Lines="@(_QlikCloudModuleFiles->'%(FullPath)|%(DestinationSubDirectory)%(Filename)%(Extension)')"

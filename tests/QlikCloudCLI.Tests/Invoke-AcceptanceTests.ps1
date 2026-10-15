@@ -177,9 +177,11 @@ Test-Case 'Packaged inventory covers every exported endpoint and constructor par
         Assert-True ($constructor.commandName -cmatch '^New-QC[A-Za-z0-9_]+Object$') "Constructor $($constructor.commandName) does not preserve the New-QC...Object naming contract."
     }
     $manualNames = @('Connect-QlikCloud', 'Disconnect-QlikCloud', 'Get-QCConnection', 'Receive-QCToken', 'Get-QlikUserAgent', 'Invoke-OpenApp')
-    $expectedExports = @($names + $manualNames | Sort-Object)
+    $engineNames = @((Get-Content -LiteralPath (Join-Path (Split-Path -Parent $ModulePath) 'engine-commands.json') -Raw | ConvertFrom-Json).commands)
+    Assert-Equal 16 $engineNames.Count 'Shared Engine command contract is incomplete.'
+    $expectedExports = @($names + $manualNames + $engineNames | Sort-Object)
     $actualExports = @(Get-Command -Module $module.Name | ForEach-Object Name | Sort-Object)
-    Assert-Equal ($expectedExports -join "`n") ($actualExports -join "`n") 'Package exports differ from its generated inventory and six supported connection/engine commands.'
+    Assert-Equal ($expectedExports -join "`n") ($actualExports -join "`n") 'Package exports differ from the REST, support and shared Engine inventories.'
     $legacyExports = @($actualExports | Where-Object { $_ -match '^[A-Za-z]+-QlikCloud' })
     Assert-Equal "Connect-QlikCloud`nDisconnect-QlikCloud" ($legacyExports -join "`n") 'Only Connect-QlikCloud and Disconnect-QlikCloud may retain the old prefix; legacy aliases must not be exported.'
     foreach ($group in $commandGroups) {
@@ -634,10 +636,12 @@ Test-Case 'OAuth client credentials parse a mocked token and authenticate genera
 }
 
 Test-Case 'Engine API-key location initializes without opening a session' {
-    # Resolve the command's actual Engine return type before using that optional
-    # SDK; this exercises normal lazy dependency loading, not an assembly preload.
-    $openMethod = (Get-Command Invoke-OpenApp -Module $module.Name).ImplementingType.GetMethod('OpenQlikApp')
-    Assert-Equal 'Qlik.Engine.IApp' $openMethod.ReturnType.GetGenericArguments()[0].FullName 'Engine command return contract changed.'
+    # Engine metadata stays SDK-neutral. Explicitly load it for this isolated
+    # location configuration check; the Engine suite tests the actual open path.
+    $openCommand = Get-Command Open-QSEApp -Module $module.Name
+    Assert-True (@($openCommand.OutputType.Name) -contains 'Qlik.Engine.IApp') 'Engine command return contract changed.'
+    $runtime = if ($PSVersionTable.PSEdition -eq 'Desktop') { 'Desktop' } else { 'Core' }
+    $null = [Reflection.Assembly]::LoadFrom((Join-Path (Split-Path -Parent $ModulePath) "bin/Engine/$runtime/Qlik.Engine.dll"))
     $location = [Qlik.Engine.QcsLocation]::FromUri('https://qlikcloud-acceptance.invalid/')
     $location.AsApiKey('fixture-engine-api-key')
     Assert-True ($location -is [Qlik.Engine.IQcsLocation]) 'Engine did not create the expected Qlik Cloud location.'
