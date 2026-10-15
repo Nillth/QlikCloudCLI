@@ -39,6 +39,9 @@ jobs:
       - name: Refresh, validate, sign, and publish a recoverable release
         shell: pwsh
         env:
+          # Keep nested dependency-test paths within Windows PowerShell 5.1 limits.
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
           GH_TOKEN: ${{ github.token }}
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
           SIGNING_URL: ${{ secrets.SIGNING_URL }}
