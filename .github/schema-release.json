@@ -1,7 +1,20 @@
 {
   "formatVersion": 1,
-  "version": "2.1.0",
-  "previousVersion": "2.0.1",
-  "schemaDigest": "33bea222fd71380402361d3633a8e4eb48fd264812cfbe58a39cc4ed5810c303",
-  "changedApis": []
+  "version": "2.1.1",
+  "previousVersion": "2.1.0",
+  "schemaDigest": "6f2fe585276907478e2caf27d62f8c515fdea6e6e48946041cafbea6599429d0",
+  "changedApis": [
+    "analytics/apps",
+    "apps",
+    "assistants",
+    "automations",
+    "brands",
+    "knowledgebases",
+    "licenses",
+    "ml",
+    "reports",
+    "sharing-tasks",
+    "spaces",
+    "workflows/automations"
+  ]
 }
