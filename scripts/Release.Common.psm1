@@ -45,6 +45,14 @@ function Get-SchemaFiles {
     }
 }
 
+function Test-GeneratorDeprecatedObject {
+    param($Value)
+    # Match SchemaTransforms.IsDeprecated: only Qlik's boolean true flag removes
+    # an object. Standard deprecated, strings, and false do not exclude code.
+    return $Value -is [Collections.IDictionary] -and
+        $Value['x-qlik-deprecated'] -is [bool] -and $Value['x-qlik-deprecated']
+}
+
 function Get-SchemaInventory {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Path)
@@ -59,9 +67,15 @@ function Get-SchemaInventory {
         }
         # Git checkout line endings must not create a weekly false positive.
         $apis.Add($file.Api, [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($content))).ToLowerInvariant())
+        # Preserve raw hashes for change detection, but compare operations which
+        # generation retains. Removing an already-excluded operation is harmless;
+        # marking an active operation deprecated still appears as a removal.
+        if (Test-GeneratorDeprecatedObject $schema.paths) { continue }
         foreach ($route in $schema.paths.Keys) {
+            if (Test-GeneratorDeprecatedObject $schema.paths[$route]) { continue }
             foreach ($method in $schema.paths[$route].Keys) {
                 if ($method -cin @('get','post','put','patch','delete','head','options','trace')) {
+                    if (Test-GeneratorDeprecatedObject $schema.paths[$route][$method]) { continue }
                     $null = $routes.Add("$($file.Api) $($method.ToUpperInvariant()) $route")
                 }
             }
@@ -117,7 +131,7 @@ function Assert-CompatibleSchemaUpdate {
     [CmdletBinding()]
     param([Parameter(Mandatory)] $Difference)
     if ($Difference.RemovedApis.Count -ne 0 -or $Difference.RemovedRoutes.Count -ne 0) {
-        throw ('Automatic release stopped: upstream removed APIs or operations. Review these removals explicitly before updating the saved snapshot: ' + (@($Difference.RemovedApis) + @($Difference.RemovedRoutes) -join '; '))
+        throw ('Automatic release stopped: upstream removed APIs or active operations. Review these removals explicitly before updating the saved snapshot: ' + (@($Difference.RemovedApis) + @($Difference.RemovedRoutes) -join '; '))
     }
 }
 

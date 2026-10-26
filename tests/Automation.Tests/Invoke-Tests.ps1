@@ -37,6 +37,52 @@ try {
     Assert-Throws { Assert-CompatibleSchemaUpdate $removed } 'Removed operations must block automatic release.'
     Assert-Throws { Assert-CompatibleSchemaUpdate ([pscustomobject]@{ RemovedApis = @('widgets'); RemovedRoutes = @() }) } 'Removed API documents must block automatic release.'
 
+    $deprecatedBefore = Join-Path $temporary 'deprecated-before'
+    $deprecatedAfter = Join-Path $temporary 'deprecated-after'
+    Save-Schema $deprecatedBefore 'widgets' @{
+        '/widgets' = @{ get = @{}; post = @{ 'x-qlik-deprecated' = $true } }
+        '/retired' = @{ 'x-qlik-deprecated' = $true; get = @{} }
+    }
+    Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ get = @{} } }
+    $deprecatedOriginal = Get-SchemaInventory $deprecatedBefore
+    $retired = Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)
+    Assert-Test ($deprecatedOriginal.Routes.Count -eq 1 -and $deprecatedOriginal.Routes.Contains('widgets GET /widgets')) 'Generator-excluded operations and path items must not enter the active inventory.'
+    Assert-Test ($retired.Changed -and $retired.ChangedApis.Count -eq 1 -and $retired.RemovedRoutes.Count -eq 0) 'Retiring already-excluded operations must retain content change detection without reporting a command removal.'
+    Assert-CompatibleSchemaUpdate $retired
+    Assert-Test $true 'Retiring already-excluded operations must permit automatic validation.'
+    Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ get = @{ 'x-qlik-deprecated' = $true } } }
+    $newlyDeprecated = Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)
+    Assert-Test ($newlyDeprecated.RemovedRoutes.Count -eq 1 -and $newlyDeprecated.RemovedRoutes[0] -ceq 'widgets GET /widgets') 'Newly deprecating an active operation must count as removal.'
+    Assert-Throws { Assert-CompatibleSchemaUpdate $newlyDeprecated } 'Newly deprecated active operations must still block automatic release.'
+    Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ 'x-qlik-deprecated' = $true; get = @{} } }
+    Assert-Throws { Assert-CompatibleSchemaUpdate (Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)) } 'Newly deprecated active paths must still block automatic release.'
+    Save-Schema $deprecatedAfter 'gadgets' @{ '/gadgets' = @{ get = @{} } }
+    Remove-Item -LiteralPath (Join-Path $deprecatedAfter 'widgets.json')
+    Assert-Throws { Assert-CompatibleSchemaUpdate (Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)) } 'Deprecation filtering must not bypass removed API document protection.'
+
+    $retainedBefore = Join-Path $temporary 'retained-before'
+    $retainedAfter = Join-Path $temporary 'retained-after'
+    Save-Schema $retainedBefore 'widgets' @{
+        '/false' = @{ get = @{ 'x-qlik-deprecated' = $false } }
+        '/string' = @{ get = @{ 'x-qlik-deprecated' = 'true' } }
+        '/number' = @{ get = @{ 'x-qlik-deprecated' = 1 } }
+        '/null' = @{ get = @{ 'x-qlik-deprecated' = $null } }
+        '/case' = @{ get = @{ 'X-QLIK-DEPRECATED' = $true } }
+        '/standard' = @{ get = @{ deprecated = $true } }
+    }
+    Save-Schema $retainedAfter 'widgets' @{}
+    $retained = Compare-SchemaInventory (Get-SchemaInventory $retainedBefore) (Get-SchemaInventory $retainedAfter)
+    Assert-Test ($retained.RemovedRoutes.Count -eq 6) 'Only the exact Qlik boolean true flag may exclude a route; other values, casing and standard deprecated remain protected.'
+    Assert-Throws { Assert-CompatibleSchemaUpdate $retained } 'Removal of operations retained by the generator must still block automatic release.'
+
+    $excludedApiBefore = Join-Path $temporary 'excluded-api-before'
+    $excludedApiAfter = Join-Path $temporary 'excluded-api-after'
+    Save-Schema $excludedApiBefore 'retired' @{ '/retired' = @{ get = @{ 'x-qlik-deprecated' = $true } } }
+    Save-Schema $excludedApiAfter 'widgets' @{ '/widgets' = @{ get = @{} } }
+    $excludedApi = Compare-SchemaInventory (Get-SchemaInventory $excludedApiBefore) (Get-SchemaInventory $excludedApiAfter)
+    Assert-Test ($excludedApi.RemovedApis.Count -eq 1 -and $excludedApi.RemovedRoutes.Count -eq 0) 'API documents remain inventoried even when all their operations are excluded.'
+    Assert-Throws { Assert-CompatibleSchemaUpdate $excludedApi } 'Removing an API with only excluded operations must still block automatic release.'
+
     $nestedBefore = Join-Path $temporary 'nested-before'
     $nestedAfter = Join-Path $temporary 'nested-after'
     Save-Schema $nestedBefore 'widgets' @{ '/widgets' = @{ get = @{} } }
