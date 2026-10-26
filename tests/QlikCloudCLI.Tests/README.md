@@ -2,6 +2,8 @@
 
 Run these against a staged or extracted QlikCloudCLI module. The runner starts a clean, noninteractive PowerShell process; Pester and tenant credentials are not required. All acceptance cases run under Windows PowerShell 5.1 and PowerShell 7; neither host skips cases.
 
+Lifecycle cases exercise deprecated GET operations and model constructors present in the installed catalog. They verify warning records, continued HTTP dispatch with the default warning behavior, `-WarningAction Stop` before HTTP, and quiet active operations. Generator fixtures cover deprecation metadata and selected parameter-set placement independently of the live schema inventory.
+
 ```powershell
 powershell.exe -NoProfile -File .\tests\QlikCloudCLI.Tests\Invoke-AcceptanceTests.ps1 `
     -ModulePath 'C:\path\to\module\QlikCloudCLI\QlikCloudCLI.psd1'

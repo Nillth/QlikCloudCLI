@@ -10,6 +10,55 @@ namespace QlikCloud.Generator.Tests;
 
 public sealed class ModelRendererTests
 {
+    [Theory]
+    [InlineData("string")]
+    [InlineData("integer")]
+    public void AllOfPropertyDeprecationSurvivesConflictingAnnotationsAndTypes(string secondType)
+    {
+        var document = JObject.Parse("""
+        {"components":{"schemas":{"Combined":{"allOf":[
+          {"type":"object","properties":{"value":{"type":"string","deprecated":false}}},
+          {"type":"object","properties":{"value":{"type":"string","deprecated":true}}}
+        ]}}}}
+        """);
+        document["components"]!["schemas"]!["Combined"]!["allOf"]![1]!["properties"]!["value"]!["type"] = secondType;
+        var assembly = Compile(new ModelRenderer("users", document));
+        var combined = assembly.GetType("QlikCloud.Users.Combined", true)!;
+        Assert.Null(combined.GetCustomAttribute<ObsoleteAttribute>());
+        Assert.NotNull(combined.GetProperty("Value")!.GetCustomAttribute<ObsoleteAttribute>());
+        Assert.NotNull(JsonConvert.DeserializeObject("{\"value\":\"preserved\"}", combined));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeprecatedModelsAndPropertiesRemainUsableWithClrWarningMetadata(bool inheritedApi)
+    {
+        var document = JObject.Parse("""
+        {"components":{"schemas":{
+          "Legacy":{"type":"object","deprecated":true,"required":["oldValue"],"properties":{
+            "oldValue":{"type":"string","x-qlik-deprecated":true},"activeValue":{"type":"string"}}},
+          "Current":{"type":"object","properties":{"value":{"type":"string"}}},
+          "LegacyMode":{"type":"string","enum":["old"],"x-qlik-deprecated":true}
+        }}}
+        """);
+        if (inheritedApi) document["info"] = new JObject { ["deprecated"] = true };
+        var normalized = SchemaTransforms.Apply("users", document);
+        var assembly = Compile(new ModelRenderer("users", normalized));
+        var legacy = assembly.GetType("QlikCloud.Users.Legacy", true)!;
+        var current = assembly.GetType("QlikCloud.Users.Current", true)!;
+        Assert.Contains("QlikCloud.Users.Legacy is deprecated", legacy.GetCustomAttribute<ObsoleteAttribute>()!.Message);
+        Assert.False(legacy.GetCustomAttribute<ObsoleteAttribute>()!.IsError);
+        Assert.NotNull(legacy.GetProperty("OldValue")!.GetCustomAttribute<ObsoleteAttribute>());
+        Assert.Null(legacy.GetProperty("ActiveValue")!.GetCustomAttribute<ObsoleteAttribute>());
+        Assert.Equal(inheritedApi, current.GetCustomAttribute<ObsoleteAttribute>() != null);
+        Assert.NotNull(assembly.GetType("QlikCloud.Users.LegacyMode", true)!.GetCustomAttribute<ObsoleteAttribute>());
+        var model = JsonConvert.DeserializeObject("{\"oldValue\":\"preserved\",\"activeValue\":\"current\"}", legacy)!;
+        Assert.Equal("preserved", legacy.GetProperty("OldValue")!.GetValue(model));
+        Assert.Contains("\"oldValue\":\"preserved\"", JsonConvert.SerializeObject(model));
+        Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject("{}", legacy));
+    }
+
     [Fact]
     public void OAuth_user_responses_without_subject_deserialize_without_weakening_creation_or_other_required_fields()
     {

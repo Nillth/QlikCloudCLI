@@ -130,6 +130,7 @@ public sealed class ModelRenderer
     private void RenderClass(StringBuilder output, JObject schema, string name)
     {
         Documentation(output, schema, "    ");
+        DeprecationAttribute(output, schema, "    ", Namespace + "." + name, true);
         if (schema["oneOf"] != null || schema["anyOf"] != null)
             Warn(schema, "Named object union retains its JSON properties in extension data; branch and discriminator validation remain the server's responsibility.");
         var type = SchemaType(schema);
@@ -153,6 +154,7 @@ public sealed class ModelRenderer
                 var propertyType = ResolveType(property.Value, name + propertyName, !isRequired);
                 var permitsNull = IsNullableResolved(property.Value);
                 Documentation(output, property.Value, "        ");
+                DeprecationAttribute(output, property.Value, "        ", Namespace + "." + name + "." + propertyName, false);
                 var requiredKind = isRequired ? permitsNull ? "AllowNull" : "Always" : "Default";
                 output.Append("        [global::Newtonsoft.Json.JsonProperty(").Append(Literal(property.Key))
                     .Append(", Required = global::Newtonsoft.Json.Required.").Append(requiredKind);
@@ -300,6 +302,8 @@ public sealed class ModelRenderer
             merged = new JObject();
             Warn(first, "Conflicting allOf property types retained as object; the source intersection is unsatisfiable or cannot be represented by one CLR type.");
         }
+        // Either constituent can deprecate the combined property, including when its CLR type falls back to object.
+        if (DeprecationPolicy.IsDeprecated(first) || DeprecationPolicy.IsDeprecated(second)) merged["deprecated"] = true;
         // Keep the original intersection as reviewable metadata, including conflicting validation bounds.
         merged["x-generator-allOf-constraints"] = new JArray(first.DeepClone(), second.DeepClone());
         Warn(first, "Repeated allOf property constraints are retained in documentation; the server validates their intersection.");
@@ -310,6 +314,7 @@ public sealed class ModelRenderer
     private void RenderEnum(StringBuilder output, JObject schema, string name)
     {
         Documentation(output, schema, "    ");
+        DeprecationAttribute(output, schema, "    ", Namespace + "." + name, true);
         var values = ((JArray)schema["enum"]!).Where(v => v.Type != JTokenType.Null).ToArray();
         var strings = values.All(v => v.Type == JTokenType.String);
         if (strings) output.AppendLine("    [global::Newtonsoft.Json.JsonConverter(typeof(global::Newtonsoft.Json.Converters.StringEnumConverter))]");
@@ -338,6 +343,13 @@ public sealed class ModelRenderer
             if (schema.Value<string>("pattern") is string pattern)
                 output.Append("        [global::System.ComponentModel.DataAnnotations.RegularExpression(").Append(Literal(pattern)).AppendLine(")]");
         }
+    }
+
+    private void DeprecationAttribute(StringBuilder output, JObject schema, string indent, string subject, bool inheritApi)
+    {
+        string? message = DeprecationPolicy.Message(subject, inheritApi ? document : null,
+            inheritApi ? document["info"] as JObject : null, schema);
+        if (message != null) output.Append(indent).Append("[global::System.Obsolete(").Append(Literal(message)).AppendLine(")]");
     }
 
     private void Documentation(StringBuilder output, JObject schema, string indent, string? extra = null)

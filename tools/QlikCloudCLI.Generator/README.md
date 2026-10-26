@@ -18,7 +18,7 @@ dotnet run --project .\tools\QlikCloudCLI.Generator -c Release -- generate `
 The tool emits:
 
 - `src/*.cs`: one typed endpoint command per supported operation group and one constructor per reachable request model.
-- `commands.json` (format version 2): distinct command groups, each route's command and parameter set, SDK bindings, typed parameters, mandatory and pipeline metadata, aliases, output types, constructor models, and input hashes.
+- `commands.json` (format version 2): distinct command groups, each route's command and parameter set, SDK bindings, typed parameters, mandatory and pipeline metadata, aliases, output types, constructor models, lifecycle metadata, and input hashes.
 - `COMMANDS.md`: endpoint and constructor reference with request/output conventions.
 - `manifest.json`: ownership marker, input/tool hashes, counts, and output hashes.
 
@@ -27,6 +27,8 @@ Generator output records the unsigned input assembly hash in `commands.json` as 
 Command and constructor counts are discovered from the SDK inputs. Read `commands.json` for the inventory belonging to a particular build; schema refreshes can change these counts. Each included operation must have a command binding, including custom operations recorded by the SDK. API exclusions are explicit SDK generation policy rather than missing bindings in this tool.
 
 Catalog `operations` retains every operation with a `parameterSetName`; `commandName` is therefore not unique in this array. Select operations by HTTP method and exact path. The separate `commands` array contains `commandName`, `defaultParameterSetName`, `parameterSetNames`, and `operationCount`, once per distinct endpoint command. `commandCount` counts those REST commands, excluding model constructors and handwritten runtime commands.
+
+Deprecated routes remain in the generated module. The SDK manifest's `deprecated` Boolean and optional `deprecationMessage` become per-operation catalog metadata. Missing lifecycle fields in older manifests mean active; malformed fields fail generation. Deprecation does not change route grouping or remove parameters. The selected route emits `WriteWarning` before `ShouldProcess` or any request, so live sibling parameter sets stay quiet and normal `-WarningAction`/`$WarningPreference` behavior applies. `-WarningAction Stop` prevents the request. Request models or their selected constructors marked with `ObsoleteAttribute` remain constructible and emit a warning before creating or copying a model. A deprecated property alone does not deprecate its whole constructor. Constructor catalog entries have the same lifecycle fields, and `COMMANDS.md` identifies deprecated routes and models.
 
 ## Naming and binding
 

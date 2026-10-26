@@ -39,6 +39,8 @@ public sealed class EndpointCommand
     public required string Implementation { get; init; }
     public required string OutputType { get; init; }
     public required string RawResponseType { get; init; }
+    public bool Deprecated { get; init; }
+    public string? DeprecationMessage { get; init; }
     public bool SupportsShouldProcess { get; init; }
     public string? NamingReason { get; set; }
     public List<CommandParameter> Parameters { get; init; } = [];
@@ -50,6 +52,8 @@ public sealed class ModelCommand
     public required string CommandName { get; init; }
     public required string ModelType { get; init; }
     public required string Api { get; init; }
+    public bool Deprecated { get; init; }
+    public string? DeprecationMessage { get; init; }
     public bool SupportsJson { get; init; }
     public string? CollectionElementType { get; init; }
     public List<CommandParameter> Parameters { get; init; } = [];

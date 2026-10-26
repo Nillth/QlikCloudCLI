@@ -111,7 +111,8 @@ public static class SchemaTransforms
 			// generated helpers. The custom renderer does not need a schema rewrite.
 		}
 
-		RemoveDeprecated(result);
+		// Deprecation is advisory metadata. Preserve operations, models, and
+		// properties so consumers can use their contracts with a warning.
 		return result;
 	}
 
@@ -178,94 +179,4 @@ public static class SchemaTransforms
 		if (values != null && !values.Any(v => v.Type == JTokenType.String && (string?)v == value)) values.Add(value);
 	}
 
-	private static bool IsDeprecated(JObject value) =>
-		value["x-qlik-deprecated"]?.Type == JTokenType.Boolean && (bool)value["x-qlik-deprecated"]!;
-
-	private static void RemoveDeprecated(JObject document)
-	{
-		// Only removed component schemas are reference targets. The old script also
-		// recorded deprecated property names, which could remove an unrelated schema.
-		var schemas = document["components"]?["schemas"] as JObject;
-		var deprecatedSchemas = new HashSet<string>(
-			schemas?.Properties().Where(p => p.Value is JObject value && IsDeprecated(value)).Select(p => p.Name)
-				?? Enumerable.Empty<string>(), StringComparer.Ordinal);
-
-		bool ReferencesRemovedSchema(JObject value)
-		{
-			if (value["$ref"]?.Type != JTokenType.String) return false;
-			var reference = (string)value["$ref"]!;
-			const string prefix = "#/components/schemas/";
-			if (!reference.StartsWith(prefix, StringComparison.Ordinal)) return false;
-			// JSON Pointer escaping also permits schema names containing '-' or '/'.
-			var name = reference[prefix.Length..].Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal);
-			return deprecatedSchemas.Contains(name);
-		}
-
-		// A named alias is also removed when its target is deprecated. Follow those
-		// aliases before pruning so callers cannot retain a newly dangling reference.
-		if (schemas != null)
-		{
-			bool added;
-			do
-			{
-				added = false;
-				foreach (var property in schemas.Properties())
-					if (property.Value is JObject value && ReferencesRemovedSchema(value)) added |= deprecatedSchemas.Add(property.Name);
-			} while (added);
-		}
-
-		bool Prune(JToken token)
-		{
-			var changed = false;
-			if (token is JObject obj)
-			{
-				var originalProperties = (obj["properties"] as JObject)?.Properties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
-				foreach (var property in obj.Properties().ToArray())
-				{
-					if (property.Value is JObject child && (IsDeprecated(child) || ReferencesRemovedSchema(child)))
-					{
-						property.Remove();
-						changed = true;
-						continue;
-					}
-					if (!Prune(property.Value)) continue;
-					changed = true;
-					// Preserve deliberately empty schemas; remove containers emptied by a fix.
-					if (!ReferenceEquals(obj, schemas) &&
-						(property.Value is JObject emptyObject && !emptyObject.HasValues ||
-						property.Value is JArray emptyArray && !emptyArray.HasValues))
-					{
-						property.Remove();
-					}
-				}
-				if (obj["required"] is JArray required && originalProperties != null)
-				{
-					// Only names removed from local properties are affected; required
-					// properties supplied by allOf must keep their original semantics.
-					var properties = obj["properties"] as JObject;
-					foreach (var value in required.Where(v => v.Type == JTokenType.String &&
-						originalProperties.Contains((string)v!) && properties?[(string)v!] == null).ToArray()) value.Remove();
-					if (required.Count == 0) obj.Remove("required");
-				}
-			}
-			else if (token is JArray array)
-			{
-				foreach (var item in array.ToArray())
-				{
-					if (item is JObject child && (IsDeprecated(child) || ReferencesRemovedSchema(child)))
-					{
-						item.Remove();
-						changed = true;
-					}
-					else changed |= Prune(item);
-				}
-			}
-			return changed;
-		}
-
-		if (schemas != null) Prune(schemas);
-		if (document["paths"] is JObject paths) Prune(paths);
-		// References can also appear in reusable responses and request bodies.
-		Prune(document);
-	}
 }

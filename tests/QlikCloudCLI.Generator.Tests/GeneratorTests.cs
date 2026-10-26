@@ -7,6 +7,129 @@ namespace QlikCloudCLI.Generator.Tests;
 
 public sealed class GeneratorTests
 {
+    [Theory]
+    [InlineData(0, "List", "ByWidgetId")]
+    [InlineData(1, "ByWidgetId", "List")]
+    public void DeprecatedRouteRemainsGroupedAndWarnsOnlyForItsSelectedSet(int routeIndex, string deprecatedSet, string activeSet)
+    {
+        using var workspace = new Workspace();
+        JsonObject manifest = workspace.ReadManifest();
+        JsonObject operation = manifest["apis"]![0]!["operations"]![routeIndex]!.AsObject();
+        operation["deprecated"] = true;
+        operation["deprecationMessage"] = "Use the replacement | API.\nDo not remove existing callers.";
+        workspace.WriteManifest(manifest);
+
+        CommandInventory inventory = workspace.Generate();
+        Assert.Equal(4, inventory.Operations.Count);
+        Assert.Equal(3, inventory.CommandCount);
+        EndpointCommandGroup group = Assert.Single(inventory.Commands, command => command.CommandName == "Get-QCWidgets");
+        EndpointCommand deprecated = Assert.Single(group.Operations, command => command.Deprecated);
+        Assert.Equal(deprecatedSet, deprecated.ParameterSetName);
+        Assert.Equal(operation["deprecationMessage"]!.GetValue<string>(), deprecated.DeprecationMessage);
+        Assert.False(Assert.Single(group.Operations, command => command.ParameterSetName == activeSet).Deprecated);
+
+        string source = File.ReadAllText(Path.Combine(workspace.Output, "src", "Get-QCWidgets.cs"));
+        string deprecatedBody = RouteBody(source, deprecatedSet);
+        Assert.Contains("WriteWarning(", deprecatedBody);
+        Assert.Contains("Get-QCWidgets ParameterSet " + deprecatedSet + " uses a deprecated API:", deprecatedBody);
+        Assert.Contains("Use the replacement | API.\\nDo not remove existing callers.", deprecatedBody);
+        Assert.True(deprecatedBody.IndexOf("WriteWarning(", StringComparison.Ordinal) < deprecatedBody.IndexOf("ExecuteApi(", StringComparison.Ordinal));
+        Assert.DoesNotContain("WriteWarning(", RouteBody(source, activeSet));
+
+        using JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Output, "commands.json")));
+        JsonElement catalogOperation = Assert.Single(catalog.RootElement.GetProperty("operations").EnumerateArray(), value => value.GetProperty("deprecated").GetBoolean());
+        Assert.Equal(deprecatedSet, catalogOperation.GetProperty("parameterSetName").GetString());
+        Assert.Equal(deprecated.DeprecationMessage, catalogOperation.GetProperty("deprecationMessage").GetString());
+        string help = File.ReadAllText(Path.Combine(workspace.Output, "COMMANDS.md"));
+        Assert.Contains("| Required parameters | Lifecycle |", help);
+        Assert.Contains("Deprecated: Use the replacement \\| API. Do not remove existing callers.", help);
+        Assert.Contains("-WarningAction Stop", help);
+    }
+
+    [Fact]
+    public void DeprecationCanBeAddedAndWithdrawnWithoutRemovingTheCommand()
+    {
+        using var workspace = new Workspace();
+        CommandInventory original = workspace.Generate();
+        JsonObject manifest = workspace.ReadManifest();
+        JsonObject operation = manifest["apis"]![0]!["operations"]![3]!.AsObject();
+        operation["deprecated"] = true; // Custom SDK routes use the same lifecycle contract.
+        workspace.WriteManifest(manifest);
+        Assert.True(Assert.Single(workspace.Generate().Operations, value => value.CommandName == "Get-QCWidgetsMe").Deprecated);
+        string sourcePath = Path.Combine(workspace.Output, "src", "Get-QCWidgetsMe.cs");
+        Assert.Contains("WriteWarning(", File.ReadAllText(sourcePath));
+        operation["deprecated"] = false;
+        operation["deprecationMessage"] = "Old guidance must not make this active operation warn.";
+        workspace.WriteManifest(manifest);
+        CommandInventory current = workspace.Generate();
+        Assert.Equal(original.CommandCount, current.CommandCount);
+        Assert.Equal(original.Operations.Select(value => value.CommandName), current.Operations.Select(value => value.CommandName));
+        Assert.Null(Assert.Single(current.Operations, value => value.CommandName == "Get-QCWidgetsMe").DeprecationMessage);
+        Assert.DoesNotContain("WriteWarning(", File.ReadAllText(sourcePath));
+    }
+
+    [Theory]
+    [InlineData("DeprecatedRequest", "Use WidgetRequest instead.")]
+    [InlineData("DeprecatedWithoutMessageRequest", null)]
+    [InlineData("DeprecatedConstructorRequest", "Use the replacement constructor.")]
+    public void DeprecatedModelOrSelectedConstructorRemainsAvailableWithAWarning(string typeName, string? message)
+    {
+        using var workspace = new Workspace();
+        File.WriteAllText(workspace.Rules, new JsonObject
+        {
+            ["formatVersion"] = 1,
+            ["modelRoots"] = new JsonArray(new JsonObject { ["type"] = "QlikCloud.Widgets." + typeName, ["reason"] = "Exercise retained deprecated model construction." })
+        }.ToJsonString());
+        CommandInventory inventory = workspace.Generate();
+        ModelCommand constructor = Assert.Single(inventory.Constructors, command => command.Deprecated);
+        Assert.EndsWith(typeName, constructor.ModelType);
+        Assert.Equal(message, constructor.DeprecationMessage);
+        string source = File.ReadAllText(Path.Combine(workspace.Output, "src", constructor.CommandName + ".cs"));
+        Assert.Contains("WriteWarning(", source);
+        Assert.Contains("constructs a deprecated SDK model: QlikCloud.Widgets." + typeName, source);
+        Assert.True(source.IndexOf("WriteWarning(", StringComparison.Ordinal) < source.IndexOf("model;", StringComparison.Ordinal));
+        using JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Output, "commands.json")));
+        JsonElement record = Assert.Single(catalog.RootElement.GetProperty("constructors").EnumerateArray(), value => value.GetProperty("deprecated").GetBoolean());
+        Assert.Equal(message, record.GetProperty("deprecationMessage").GetString());
+    }
+
+    [Fact]
+    public void DeprecatedPropertyDoesNotDeprecateTheEntireModelConstructor()
+    {
+        using var workspace = new Workspace();
+        File.WriteAllText(workspace.Rules, """
+            {"formatVersion":1,"modelRoots":[{"type":"QlikCloud.Widgets.ActiveRequestWithDeprecatedProperty","reason":"Keep property lifecycle separate from model lifecycle."}]}
+            """);
+        ModelCommand model = Assert.Single(workspace.Generate().Constructors, value => value.ModelType.EndsWith("ActiveRequestWithDeprecatedProperty", StringComparison.Ordinal));
+        Assert.False(model.Deprecated);
+        Assert.Contains(model.Parameters, parameter => parameter.Name == "OldName");
+        Assert.DoesNotContain("WriteWarning(", File.ReadAllText(Path.Combine(workspace.Output, "src", model.CommandName + ".cs")));
+    }
+
+    [Theory]
+    [InlineData("deprecated", "\"true\"")]
+    [InlineData("deprecated", "null")]
+    [InlineData("deprecated", "1")]
+    [InlineData("deprecationMessage", "true")]
+    public void MalformedLifecycleMetadataFailsWithoutReplacingGoodOutput(string field, string json)
+    {
+        using var workspace = new Workspace();
+        workspace.Generate();
+        var original = Snapshot(workspace.Output);
+        JsonObject manifest = workspace.ReadManifest();
+        manifest["apis"]![0]!["operations"]![0]![field] = JsonNode.Parse(json);
+        workspace.WriteManifest(manifest);
+        Assert.Throws<InvalidDataException>(() => workspace.Generate());
+        EqualSnapshots(original, Snapshot(workspace.Output));
+    }
+
+    private static string RouteBody(string source, string parameterSet)
+    {
+        int start = source.IndexOf("case \"" + parameterSet + "\":", StringComparison.Ordinal);
+        int end = source.IndexOf("return;", start, StringComparison.Ordinal);
+        return source[start..end];
+    }
+
     [Fact]
     public void NamespacedApisCoexistWithLegacyRoutesWithoutDuplicatingPrefixes()
     {

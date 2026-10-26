@@ -44,6 +44,25 @@ namespace QlikCloud.Widgets
         public string? Name { get; set; }
         public static NestedModel FromJson(string json) => new();
     }
+
+    [Obsolete("Use WidgetRequest instead.")]
+    public sealed class DeprecatedRequest { public string? Name { get; set; } }
+
+    [Obsolete]
+    public sealed class DeprecatedWithoutMessageRequest { public string? Name { get; set; } }
+
+    public sealed class DeprecatedConstructorRequest
+    {
+        [Obsolete("Use the replacement constructor.")]
+        public DeprecatedConstructorRequest() { }
+    }
+
+    public sealed class ActiveRequestWithDeprecatedProperty
+    {
+        [Obsolete("Use NewName instead.")]
+        public string? OldName { get; set; }
+        public string? NewName { get; set; }
+    }
 }
 
 namespace QlikCloud.AnalyticsWidgets

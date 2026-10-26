@@ -45,7 +45,7 @@
     },
     {
       "api": "apps",
-      "sha256": "4c808ac8a1652820d54ab40e706cbeac3f72495333bd830df967fa7f379a9fff"
+      "sha256": "ca801ffe9b66c448aff7438e543b54fed513b1181193614cbcca09ed0644b4e5"
     },
     {
       "api": "assistants",
@@ -65,7 +65,7 @@
     },
     {
       "api": "automations",
-      "sha256": "b379105b391d40fe28b86864102726908846fca49b05adb4903514a30fe49a2a"
+      "sha256": "d40906598fc8bb267b503536a2c70b4baa50d19d081cb2a0223e8e23f6e9c3c0"
     },
     {
       "api": "automl-deployments",
@@ -136,8 +136,12 @@
       "sha256": "96a98402368159180c2ca6223c65c0bf66c3e4f89e7a01a7cee0ae6a4c5a5449"
     },
     {
+      "api": "data-governance/data-contracts",
+      "sha256": "2eb6b4880a2145e637523f615ef5ec497fb119de421651f970c8257517897417"
+    },
+    {
       "api": "data-governance/data-products",
-      "sha256": "97abd4225d0cc8b7d63507ff0a344b8b612a66a69f65acee91abcfe0a0c88c7d"
+      "sha256": "2325008040238309ddda6b214926161cdf2ee1e15e940637285fdd0963d26473"
     },
     {
       "api": "data-governance/data-qualities",
@@ -217,7 +221,7 @@
     },
     {
       "api": "ml",
-      "sha256": "a8adfbded4da466d1ed176acd5cb0c39f704ad9502c386c6a0f4a62e617677a0"
+      "sha256": "6427df56e5dd6c1fd807e9d4544e5c356cd863b01473dba673999260055528ea"
     },
     {
       "api": "notes",
@@ -333,7 +337,7 @@
     },
     {
       "api": "workflows/automations",
-      "sha256": "4b97e68c8b7adabd6fbb6c92ae51ac9c2b877954b408b343d423ba38f4b51b91"
+      "sha256": "25eb8a0660a7704b74a35a7b43452a0519cbd491cb61db646c181adfaf396193"
     }
   ],
   "files": [
@@ -379,7 +383,7 @@
     },
     {
       "path": "apps.json",
-      "sha256": "4c808ac8a1652820d54ab40e706cbeac3f72495333bd830df967fa7f379a9fff"
+      "sha256": "ca801ffe9b66c448aff7438e543b54fed513b1181193614cbcca09ed0644b4e5"
     },
     {
       "path": "assistants.json",
@@ -399,7 +403,7 @@
     },
     {
       "path": "automations.json",
-      "sha256": "b379105b391d40fe28b86864102726908846fca49b05adb4903514a30fe49a2a"
+      "sha256": "d40906598fc8bb267b503536a2c70b4baa50d19d081cb2a0223e8e23f6e9c3c0"
     },
     {
       "path": "automl-deployments.json",
@@ -470,8 +474,12 @@
       "sha256": "96a98402368159180c2ca6223c65c0bf66c3e4f89e7a01a7cee0ae6a4c5a5449"
     },
     {
+      "path": "data-governance/data-contracts.json",
+      "sha256": "2eb6b4880a2145e637523f615ef5ec497fb119de421651f970c8257517897417"
+    },
+    {
       "path": "data-governance/data-products.json",
-      "sha256": "97abd4225d0cc8b7d63507ff0a344b8b612a66a69f65acee91abcfe0a0c88c7d"
+      "sha256": "2325008040238309ddda6b214926161cdf2ee1e15e940637285fdd0963d26473"
     },
     {
       "path": "data-governance/data-qualities.json",
@@ -551,7 +559,7 @@
     },
     {
       "path": "ml.json",
-      "sha256": "a8adfbded4da466d1ed176acd5cb0c39f704ad9502c386c6a0f4a62e617677a0"
+      "sha256": "6427df56e5dd6c1fd807e9d4544e5c356cd863b01473dba673999260055528ea"
     },
     {
       "path": "notes.json",
@@ -667,7 +675,7 @@
     },
     {
       "path": "workflows/automations.json",
-      "sha256": "4b97e68c8b7adabd6fbb6c92ae51ac9c2b877954b408b343d423ba38f4b51b91"
+      "sha256": "25eb8a0660a7704b74a35a7b43452a0519cbd491cb61db646c181adfaf396193"
     }
   ]
 }

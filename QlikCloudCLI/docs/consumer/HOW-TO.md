@@ -244,6 +244,25 @@ Supplying the detail identifier selects the detail parameter set; without it, th
 
 A few routes retain explicit suffixes because combining their parameters would be ambiguous: `Get-QCAppsReportFiltersById`, `Get-QCDirectAccessAgentsConnectorsFilesByFileType`, `Get-QCSharingTasksExecutionsByExecutionId`, `Invoke-QCDataFilesActionsChangeSpaceById`, and `Get-QCAnalyticsAppsEvaluationsById`. Look them up rather than adding a guessed `ById` suffix. For audits, `Get-QCAudits -AuditId $auditId` selects one audit; the list route's `-Id` remains a filter.
 
+## Deprecated and removed APIs
+
+Deprecated API commands remain available while their definitions are present in Qlik's schemas. Calling a deprecated operation writes a PowerShell warning, then continues normally. For a command with several parameter sets, the warning applies to the selected operation; an active operation in another set does not warn. Deprecated request-model constructors also warn when used.
+
+The installed catalog identifies these operations and their warnings:
+
+```powershell
+$module = Get-Module QlikCloudCLI
+$inventory = Get-Content (Join-Path $module.ModuleBase 'commands.json') -Raw |
+    ConvertFrom-Json
+$inventory.operations |
+    Where-Object deprecated |
+    Select-Object commandName, parameterSetName, httpMethod, path, deprecationMessage
+```
+
+Prefer the replacement documented by Qlik when writing a new script. A replacement can change parameters and response types; check its own catalog entry and documentation. Use the normal PowerShell `-WarningAction Stop` option on a command when you want a deprecation warning to stop execution before the request. Deprecation warnings do not change the API's permissions or guarantee that Qlik still serves it.
+
+[Release notes](https://github.com/Nillth/QlikCloudCLI/releases) list added, deprecated, and removed APIs and operations. Removed definitions disappear from newly generated releases. Review those notes before upgrading scripts that use affected APIs.
+
 ## List, filter, and export data
 
 The default result is the typed API body. Many list endpoints return an envelope with `Data` and `Links`; they do not directly return every resource in the tenant.

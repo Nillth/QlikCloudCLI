@@ -74,14 +74,15 @@ function Publish-Candidate($State, $Built) {
     $null = Invoke-Native git @('merge-base', '--is-ancestor', $commit, 'origin/main')
     $tagState = (Invoke-Native git @('show', "${tag}:.github/schema-release.json")) | ConvertFrom-Json
     if ($tagState.version -cne $State.version -or $tagState.schemaDigest -cne $State.schemaDigest) { throw 'Release tag points to a different candidate.' }
+    # The immutable tag owns lifecycle notes on every retry, even if main later
+    # contains another state or a newer inventory implementation.
+    $State = $tagState
+    $releaseNotes = Get-SchemaReleaseNotes -State $State -Commit $commit
     $release = Get-Release $tag
     if ($null -eq $release) {
         if (Test-GalleryVersion $State.version) { throw 'This Gallery version already exists without matching GitHub release provenance; refusing to overwrite or adopt it.' }
         $notes = Join-Path $work 'release-notes.md'
-        $lines = @("QlikCloudCLI $($State.version)", '', 'Built and tested with Windows PowerShell 5.1 and PowerShell 7.', '', "Schema snapshot SHA256: $($State.schemaDigest)", "Source commit: $commit", '', 'Schema changes:', '')
-        $lines += @($State.changedApis | ForEach-Object { "- $_" })
-        if ($State.changedApis.Count -eq 0) { $lines += '- Initial public release of the saved schema snapshot.' }
-        [IO.File]::WriteAllLines($notes, $lines, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($notes, $releaseNotes, [Text.UTF8Encoding]::new($false))
         $null = Invoke-Native gh @('release','create',$tag,'--repo',$repository,'--verify-tag','--draft','--title',"QlikCloudCLI $($State.version)",'--notes-file',$notes)
         $release = Get-Release $tag
     }
@@ -179,16 +180,17 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Schema refresh failed (exit $LASTEXITCODE)." }
     $current = Get-SchemaInventory $refreshed
     $difference = Compare-SchemaInventory $baseline $current
-    Assert-CompatibleSchemaUpdate $difference
     if (-not $difference.Changed -and -not $PublishInitial) { Write-Host 'No OpenAPI schema changes; no version increment or publication.'; return }
     if ($PublishInitial -and (Test-Path -LiteralPath $statePath)) { throw 'publish_initial is only for the first release; an existing release state is present.' }
     Assert-PublisherConfiguration
     $candidateVersion = if ($PublishInitial) { $version } else { Get-NextPatchVersion $version }
     if (Test-GalleryVersion $candidateVersion) { throw "Gallery already contains $candidateVersion; choose a new version through a reviewed source change." }
-    # Removals were rejected, so this copy cannot leave stale API documents behind.
+    # Lifecycle changes are release notes, not a release veto. Snapshot copying
+    # still verifies ownership and safely removes obsolete schema documents.
     Copy-SchemaSnapshot -Source $refreshed -Destination $schemaPath
     Write-ReleaseJson $versionPath ([ordered]@{ version = $candidateVersion })
-    $state = [ordered]@{ formatVersion = 1; version = $candidateVersion; previousVersion = $version; schemaDigest = $current.Digest; changedApis = @($difference.AddedApis) + @($difference.ChangedApis) }
+    $state = New-SchemaReleaseState -Version $candidateVersion -PreviousVersion $version -Inventory $current -Difference $difference
+    $null = Get-SchemaReleaseNotes -State $state -Commit 'pending validation'
     Write-ReleaseJson $statePath $state
     $null = Invoke-Native git @('config','user.name','github-actions[bot]')
     $null = Invoke-Native git @('config','user.email','41898282+github-actions[bot]@users.noreply.github.com')

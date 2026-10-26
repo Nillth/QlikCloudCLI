@@ -8,10 +8,21 @@ $null = [IO.Directory]::CreateDirectory($temporary)
 $passed = 0
 function Assert-Test([bool] $Condition, [string] $Message) { if (-not $Condition) { throw $Message }; $script:passed++ }
 function Assert-Throws([scriptblock] $Action, [string] $Message) { $thrown = $false; try { & $Action } catch { $thrown = $true }; Assert-Test $thrown $Message }
-function Save-Schema([string] $Directory, [string] $Name, [hashtable] $Paths) {
+function Save-Schema([string] $Directory, [string] $Name, [hashtable] $Paths, [hashtable] $Metadata = @{}) {
     $path = Join-Path $Directory ($Name + '.json')
     $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))
-    Write-ReleaseJson $path @{ openapi = '3.0.0'; paths = $Paths }
+    $schema = @{ openapi = '3.0.0'; paths = $Paths }
+    foreach ($key in $Metadata.Keys) { $schema[$key] = $Metadata[$key] }
+    Write-ReleaseJson $path $schema
+}
+function Save-SnapshotManifest([string] $Directory) {
+    $inventory = Get-SchemaInventory $Directory
+    $apis = @($inventory.Apis.Keys | Sort-Object -CaseSensitive | ForEach-Object { @{ api = $_; sha256 = $inventory.Apis[$_] } })
+    $files = @($inventory.Apis.Keys | Sort-Object -CaseSensitive | ForEach-Object { @{ path = $_ + '.json'; sha256 = $inventory.Apis[$_] } })
+    Write-ReleaseJson (Join-Path $Directory 'manifest.json') @{ generator = 'QlikCloud.Generator'; formatVersion = 1; command = 'refresh'; apis = $apis; files = $files }
+}
+function Get-SnapshotBytes([string] $Directory) {
+    return @(Get-ChildItem -LiteralPath $Directory -File -Recurse | Sort-Object FullName | ForEach-Object { $_.FullName + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash }) -join "`n"
 }
 try {
     $before = Join-Path $temporary 'before'
@@ -30,12 +41,13 @@ try {
     Save-Schema $after 'gadgets' @{ '/gadgets' = @{ post = @{} } }
     $added = Compare-SchemaInventory $original (Get-SchemaInventory $after)
     Assert-Test ($added.Changed -and $added.AddedApis.Count -eq 1 -and $added.AddedRoutes.Count -eq 1) 'New API documents must be detected.'
-    Assert-CompatibleSchemaUpdate $added
     Save-Schema $after 'widgets' @{ '/widgets' = @{ get = @{} }; '/widgets/{id}' = @{ get = @{} } }
     $removed = Compare-SchemaInventory $original (Get-SchemaInventory $after)
     Assert-Test ($removed.RemovedRoutes.Count -eq 1 -and $removed.RemovedRoutes[0] -eq 'widgets DELETE /widgets/{id}') 'Removed method on an existing path must be detected.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate $removed } 'Removed operations must block automatic release.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate ([pscustomobject]@{ RemovedApis = @('widgets'); RemovedRoutes = @() }) } 'Removed API documents must block automatic release.'
+    $removedState = New-SchemaReleaseState -Version '2.2.1' -PreviousVersion '2.2.0' -Inventory (Get-SchemaInventory $after) -Difference $removed
+    $removedNotes = Get-SchemaReleaseNotes $removedState 'fixture-commit'
+    Assert-Test ($removedState.schemaChanges.removedOperations.Count -eq 1 -and $removedNotes.Contains('Removed HTTP operations:') -and $removedNotes.Contains('widgets DELETE /widgets/{id}')) 'Removed operations must produce release notes without blocking a candidate.'
+    Assert-Test (-not (Get-Command Assert-CompatibleSchemaUpdate -ErrorAction SilentlyContinue)) 'The obsolete removal veto must not remain exported.'
 
     $deprecatedBefore = Join-Path $temporary 'deprecated-before'
     $deprecatedAfter = Join-Path $temporary 'deprecated-after'
@@ -46,19 +58,19 @@ try {
     Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ get = @{} } }
     $deprecatedOriginal = Get-SchemaInventory $deprecatedBefore
     $retired = Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)
-    Assert-Test ($deprecatedOriginal.Routes.Count -eq 1 -and $deprecatedOriginal.Routes.Contains('widgets GET /widgets')) 'Generator-excluded operations and path items must not enter the active inventory.'
-    Assert-Test ($retired.Changed -and $retired.ChangedApis.Count -eq 1 -and $retired.RemovedRoutes.Count -eq 0) 'Retiring already-excluded operations must retain content change detection without reporting a command removal.'
-    Assert-CompatibleSchemaUpdate $retired
-    Assert-Test $true 'Retiring already-excluded operations must permit automatic validation.'
+    Assert-Test ($deprecatedOriginal.Routes.Count -eq 3 -and $deprecatedOriginal.DeprecatedRoutes.Count -eq 2) 'All raw routes must be inventoried, with separate inherited deprecation metadata.'
+    Assert-Test ($retired.Changed -and $retired.ChangedApis.Count -eq 1 -and $retired.RemovedRoutes.Count -eq 2) 'Removed deprecated operations must remain visible in release notes.'
     Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ get = @{ 'x-qlik-deprecated' = $true } } }
     $newlyDeprecated = Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)
-    Assert-Test ($newlyDeprecated.RemovedRoutes.Count -eq 1 -and $newlyDeprecated.RemovedRoutes[0] -ceq 'widgets GET /widgets') 'Newly deprecating an active operation must count as removal.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate $newlyDeprecated } 'Newly deprecated active operations must still block automatic release.'
+    Assert-Test ($newlyDeprecated.DeprecatedRoutes.Count -eq 1 -and $newlyDeprecated.DeprecatedRoutes[0] -ceq 'widgets GET /widgets') 'Newly deprecated operations must be identified separately.'
+    Assert-Test ($newlyDeprecated.RemovedRoutes -cnotcontains 'widgets GET /widgets') 'Deprecation must not be misreported as removal.'
     Save-Schema $deprecatedAfter 'widgets' @{ '/widgets' = @{ 'x-qlik-deprecated' = $true; get = @{} } }
-    Assert-Throws { Assert-CompatibleSchemaUpdate (Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)) } 'Newly deprecated active paths must still block automatic release.'
+    Assert-Test ((Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)).DeprecatedRoutes -ccontains 'widgets GET /widgets') 'Path-level deprecation must be inherited by its operations.'
     Save-Schema $deprecatedAfter 'gadgets' @{ '/gadgets' = @{ get = @{} } }
     Remove-Item -LiteralPath (Join-Path $deprecatedAfter 'widgets.json')
-    Assert-Throws { Assert-CompatibleSchemaUpdate (Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)) } 'Deprecation filtering must not bypass removed API document protection.'
+    $apiRemoved = Compare-SchemaInventory $deprecatedOriginal (Get-SchemaInventory $deprecatedAfter)
+    $apiRemovedNotes = Get-SchemaReleaseNotes (New-SchemaReleaseState -Version '2.2.1' -PreviousVersion '2.2.0' -Inventory (Get-SchemaInventory $deprecatedAfter) -Difference $apiRemoved) 'fixture-commit'
+    Assert-Test ($apiRemoved.RemovedApis -ccontains 'widgets' -and $apiRemovedNotes.Contains('Removed APIs:')) 'Removed API documents must be recorded without blocking release notes.'
 
     $retainedBefore = Join-Path $temporary 'retained-before'
     $retainedAfter = Join-Path $temporary 'retained-after'
@@ -69,26 +81,55 @@ try {
         '/null' = @{ get = @{ 'x-qlik-deprecated' = $null } }
         '/case' = @{ get = @{ 'X-QLIK-DEPRECATED' = $true } }
         '/standard' = @{ get = @{ deprecated = $true } }
+        '/standard-string' = @{ get = @{ deprecated = 'true' } }
     }
     Save-Schema $retainedAfter 'widgets' @{}
     $retained = Compare-SchemaInventory (Get-SchemaInventory $retainedBefore) (Get-SchemaInventory $retainedAfter)
-    Assert-Test ($retained.RemovedRoutes.Count -eq 6) 'Only the exact Qlik boolean true flag may exclude a route; other values, casing and standard deprecated remain protected.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate $retained } 'Removal of operations retained by the generator must still block automatic release.'
+    Assert-Test ($retained.RemovedRoutes.Count -eq 7) 'Lifecycle inventory must retain every raw route, regardless of deprecation flags.'
+    $strictFlags = Get-SchemaInventory $retainedBefore
+    Assert-Test ($strictFlags.DeprecatedRoutes.Count -eq 1 -and $strictFlags.DeprecatedRoutes.Contains('widgets GET /standard')) 'Only exact lowercase keys with boolean true mark deprecation; standard deprecated is supported.'
+
+    $lifecycleBefore = Join-Path $temporary 'lifecycle-before'
+    $lifecycleAfter = Join-Path $temporary 'lifecycle-after'
+    Save-Schema $lifecycleBefore 'document' @{ '/one' = @{ get = @{} } }
+    Save-Schema $lifecycleBefore 'info' @{ '/two' = @{ get = @{} } }
+    Save-Schema $lifecycleBefore 'paths' @{ '/three' = @{ get = @{} } }
+    Save-Schema $lifecycleAfter 'document' @{ '/one' = @{ get = @{ deprecated = $false } } } @{ deprecated = $true }
+    Save-Schema $lifecycleAfter 'info' @{ '/two' = @{ get = @{} } } @{ info = @{ 'x-qlik-deprecated' = $true } }
+    Save-Schema $lifecycleAfter 'paths' @{ deprecated = $true; '/three' = @{ get = @{} } }
+    Save-Schema $lifecycleAfter 'new-deprecated' @{ '/four' = @{ get = @{ deprecated = $true } } } @{ 'x-qlik-deprecated' = $true }
+    $lifecycle = Compare-SchemaInventory (Get-SchemaInventory $lifecycleBefore) (Get-SchemaInventory $lifecycleAfter)
+    Assert-Test ($lifecycle.DeprecatedApis.Count -eq 3 -and $lifecycle.DeprecatedRoutes.Count -eq 4 -and $lifecycle.RemovedRoutes.Count -eq 0) 'Document/info/paths flags must inherit; false descendants must not erase an ancestor flag.'
+    Assert-Test ($lifecycle.AddedApis -ccontains 'new-deprecated' -and $lifecycle.AddedRoutes -ccontains 'new-deprecated GET /four') 'New deprecated APIs and operations must be recorded as both additions and deprecations.'
+    $state = New-SchemaReleaseState -Version '2.2.0' -PreviousVersion '2.1.1' -Inventory (Get-SchemaInventory $lifecycleAfter) -Difference $lifecycle -ReleaseNotes @('Adds runtime warnings for deprecated commands.')
+    $statePath = Join-Path $temporary 'candidate.json'
+    Write-ReleaseJson $statePath $state
+    $notes = Get-SchemaReleaseNotes $state 'fixture-commit'
+    $resumedNotes = Get-SchemaReleaseNotes (Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json) 'fixture-commit'
+    Assert-Test ($notes -ceq $resumedNotes -and $notes.Contains('Newly deprecated APIs:') -and $notes.Contains('Newly deprecated HTTP operations:') -and $notes.Contains('Adds runtime warnings for deprecated commands.')) 'Lifecycle and source-release notes must survive durable state serialization and resume.'
+    $unchangedDeprecated = New-SchemaReleaseState -Version '2.2.1' -PreviousVersion '2.2.0' -Inventory (Get-SchemaInventory $lifecycleAfter) -Difference (Compare-SchemaInventory (Get-SchemaInventory $lifecycleAfter) (Get-SchemaInventory $lifecycleAfter))
+    $unchangedDeprecatedNotes = Get-SchemaReleaseNotes $unchangedDeprecated 'fixture-commit'
+    Assert-Test ($unchangedDeprecated.schemaChanges.deprecatedOperations.Count -eq 0 -and $unchangedDeprecated.schemaChanges.currentDeprecatedOperations.Count -eq 4 -and $unchangedDeprecatedNotes.Contains('Deprecated HTTP operations in this snapshot:')) 'Existing deprecated operations must remain recorded even when no flag was newly added.'
+    Assert-Test ((Compare-SchemaInventory (Get-SchemaInventory $lifecycleAfter) (Get-SchemaInventory $lifecycleAfter)).DeprecatedRoutes.Count -eq 0) 'Unchanged deprecations must not repeat as newly deprecated operations.'
+    $legacyNotes = Get-SchemaReleaseNotes ([pscustomobject]@{ formatVersion = 1; version = '2.1.1'; schemaDigest = ('1' * 64); changedApis = @('widgets') }) 'legacy-commit'
+    Assert-Test ($legacyNotes.Contains('- widgets') -and $legacyNotes.Contains('legacy candidate format')) 'Old candidate states must remain resumable without invented lifecycle details.'
+    $emptyNotes = Get-SchemaReleaseNotes (New-SchemaReleaseState -Version '2.2.0' -PreviousVersion '2.1.1' -Inventory $original -Difference $same -ReleaseNotes @('Source-only update.')) 'fixture-commit'
+    Assert-Test ($emptyNotes.Contains('Source-only update.') -and $emptyNotes.Contains('No schema content changes') -and -not $emptyNotes.Contains('Initial public release')) 'A source-only release must not be mislabelled as an initial schema release.'
+    Assert-Throws { Get-SchemaReleaseNotes ([pscustomobject]@{ formatVersion = 2; version = '2.2.0'; schemaDigest = ('1' * 64) }) 'fixture-commit' } 'Malformed new candidate lifecycle state must still fail.'
 
     $excludedApiBefore = Join-Path $temporary 'excluded-api-before'
     $excludedApiAfter = Join-Path $temporary 'excluded-api-after'
     Save-Schema $excludedApiBefore 'retired' @{ '/retired' = @{ get = @{ 'x-qlik-deprecated' = $true } } }
     Save-Schema $excludedApiAfter 'widgets' @{ '/widgets' = @{ get = @{} } }
     $excludedApi = Compare-SchemaInventory (Get-SchemaInventory $excludedApiBefore) (Get-SchemaInventory $excludedApiAfter)
-    Assert-Test ($excludedApi.RemovedApis.Count -eq 1 -and $excludedApi.RemovedRoutes.Count -eq 0) 'API documents remain inventoried even when all their operations are excluded.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate $excludedApi } 'Removing an API with only excluded operations must still block automatic release.'
+    Assert-Test ($excludedApi.RemovedApis.Count -eq 1 -and $excludedApi.RemovedRoutes.Count -eq 1) 'Removing a wholly deprecated API must include its API and raw operation in release notes.'
 
     $nestedBefore = Join-Path $temporary 'nested-before'
     $nestedAfter = Join-Path $temporary 'nested-after'
     Save-Schema $nestedBefore 'widgets' @{ '/widgets' = @{ get = @{} } }
     Save-Schema $nestedBefore 'analytics/widgets' @{ '/widgets' = @{ get = @{} } }
     Save-Schema $nestedBefore 'analytics/manifest' @{ '/manifests' = @{ get = @{} } }
-    Write-ReleaseJson (Join-Path $nestedBefore 'manifest.json') @{ archiveSha256 = ('1' * 64) }
+    Save-SnapshotManifest $nestedBefore
     Copy-SchemaSnapshot -Source $nestedBefore -Destination $nestedAfter
     $nestedOriginal = Get-SchemaInventory $nestedBefore
     Assert-Test ($nestedOriginal.Apis.Count -eq 3 -and $nestedOriginal.Apis.ContainsKey('widgets') -and $nestedOriginal.Apis.ContainsKey('analytics/widgets') -and $nestedOriginal.Apis.ContainsKey('analytics/manifest')) 'Relative API identities must retain namespaces; only the root manifest is excluded.'
@@ -100,12 +141,85 @@ try {
     Remove-Item -LiteralPath (Join-Path $nestedAfter 'analytics/manifest.json')
     $nestedRemoved = Compare-SchemaInventory $nestedOriginal (Get-SchemaInventory $nestedAfter)
     Assert-Test ($nestedRemoved.RemovedApis.Count -eq 1 -and $nestedRemoved.RemovedApis[0] -ceq 'analytics/manifest' -and $nestedRemoved.RemovedRoutes[0] -ceq 'analytics/manifest GET /manifests') 'Nested API and operation removals must retain their namespace.'
-    Assert-Throws { Assert-CompatibleSchemaUpdate $nestedRemoved } 'A removed nested API must block automatic release.'
+
+    # A replacement snapshot removes only obsolete, manifest-owned schema JSON.
+    Save-SnapshotManifest $nestedAfter
+    Set-Content -LiteralPath (Join-Path $nestedBefore 'keep.txt') -Value 'unknown non-schema content'
+    Copy-SchemaSnapshot -Source $nestedAfter -Destination $nestedBefore
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $nestedBefore 'analytics/manifest.json')) -and (Test-Path -LiteralPath (Join-Path $nestedBefore 'keep.txt'))) 'Snapshot replacement must remove stale nested schema JSON while preserving unrelated files.'
+    Assert-Test ((Get-SchemaInventory $nestedBefore).Digest -ceq (Get-SchemaInventory $nestedAfter).Digest) 'Copied snapshot must exactly match the replacement inventory after removals.'
 
     $caseTarget = Join-Path $temporary 'case-target'
     Save-Schema $caseTarget 'Analytics/other' @{ '/other' = @{ get = @{} } }
+    Save-SnapshotManifest $caseTarget
     Assert-Throws { Copy-SchemaSnapshot -Source $nestedBefore -Destination $caseTarget } 'Snapshot copy must reject namespace casing collisions before writing any files.'
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $caseTarget 'widgets.json'))) 'Failed copy preflight must leave the destination unchanged.'
+
+    $copySource = Join-Path $temporary 'copy-source'
+    $copyTarget = Join-Path $temporary 'copy-target'
+    Save-Schema $copySource 'current' @{ '/current' = @{ get = @{} } }
+    Save-SnapshotManifest $copySource
+    Save-Schema $copyTarget 'obsolete' @{ '/obsolete' = @{ get = @{} } }
+    Save-SnapshotManifest $copyTarget
+    $savedTarget = Get-SnapshotBytes $copyTarget
+    $sourceManifestPath = Join-Path $copySource 'manifest.json'
+    $sourceManifest = Get-Content -LiteralPath $sourceManifestPath -Raw | ConvertFrom-Json -AsHashtable
+    $sourceManifest.apis[0].sha256 = '0' * 64
+    Write-ReleaseJson $sourceManifestPath $sourceManifest
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'A wrong source manifest hash must stop copying before stale schemas are deleted.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $savedTarget) 'A source manifest failure must leave every destination byte unchanged.'
+    Save-SnapshotManifest $copySource
+    $sourceManifest = Get-Content -LiteralPath $sourceManifestPath -Raw | ConvertFrom-Json -AsHashtable
+    $sourceManifest.files[0].path = '../outside.json'
+    Write-ReleaseJson $sourceManifestPath $sourceManifest
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'Manifest paths outside the snapshot must be rejected.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $savedTarget) 'An unsafe source manifest must not mutate the destination.'
+    Save-SnapshotManifest $copySource
+    $sourceManifest = Get-Content -LiteralPath $sourceManifestPath -Raw | ConvertFrom-Json -AsHashtable
+    $sourceManifest.files = @($sourceManifest.files[0], $sourceManifest.files[0])
+    Write-ReleaseJson $sourceManifestPath $sourceManifest
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'Duplicate manifest entries must fail preflight.'
+    Save-SnapshotManifest $copySource
+    Save-Schema $copySource 'unlisted' @{ '/unlisted' = @{ get = @{} } }
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'A source schema absent from its manifest must fail preflight.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $savedTarget) 'An incomplete source manifest must not mutate the destination.'
+    Save-SnapshotManifest $copySource
+    $targetManifestPath = Join-Path $copyTarget 'manifest.json'
+    $targetManifest = Get-Content -LiteralPath $targetManifestPath -Raw | ConvertFrom-Json -AsHashtable
+    $targetManifest.files[0].sha256 = '0' * 64
+    Write-ReleaseJson $targetManifestPath $targetManifest
+    $invalidTarget = Get-SnapshotBytes $copyTarget
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'A destination ownership/hash mismatch must prevent removal.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $invalidTarget) 'A mismatched destination manifest must be left unchanged.'
+    Save-SnapshotManifest $copyTarget
+    Write-ReleaseJson (Join-Path $copyTarget 'unowned.json') @{ purpose = 'Unrelated JSON is not a removable schema.' }
+    $unknownTarget = Get-SnapshotBytes $copyTarget
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'Unknown JSON in the destination must not be silently deleted.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $unknownTarget) 'Unknown destination files must survive a failed copy unchanged.'
+    Remove-Item -LiteralPath (Join-Path $copyTarget 'unowned.json')
+    Save-Schema $copyTarget 'unowned' @{ '/user-owned' = @{ get = @{} } }
+    $unknownSchemaTarget = Get-SnapshotBytes $copyTarget
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'A valid-looking schema absent from destination ownership metadata must not be deleted.'
+    Assert-Test ((Get-SnapshotBytes $copyTarget) -ceq $unknownSchemaTarget) 'Unlisted destination schema files must remain byte-for-byte unchanged.'
+    Remove-Item -LiteralPath (Join-Path $copyTarget 'unowned.json')
+    $savedManifest = [IO.File]::ReadAllBytes($targetManifestPath)
+    Remove-Item -LiteralPath $targetManifestPath
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copyTarget } 'An existing JSON tree without an ownership manifest must not be overwritten or pruned.'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $copyTarget 'obsolete.json')) 'Missing ownership metadata must preserve the existing schema.'
+    [IO.File]::WriteAllBytes($targetManifestPath, $savedManifest)
+    Assert-Throws { Copy-SchemaSnapshot $copySource (Join-Path $copySource 'child') } 'Overlapping snapshot trees must fail before creating a destination.'
+    Assert-Throws { Copy-SchemaSnapshot $copySource $copySource } 'Copying a snapshot onto itself must fail.'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $copySource 'child'))) 'An overlapping destination must not be created.'
+    Copy-SchemaSnapshot $copySource $copyTarget
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $copyTarget 'obsolete.json')) -and (Get-SchemaInventory $copyTarget).Apis.Count -eq 2) 'A valid owned obsolete schema must be removed during replacement.'
+
+    $collisionTarget = Join-Path $temporary 'file-directory-collision'
+    Save-Schema $collisionTarget 'old' @{ '/old' = @{ get = @{} } }
+    Save-SnapshotManifest $collisionTarget
+    Set-Content -LiteralPath (Join-Path $collisionTarget 'analytics') -Value 'Unrelated file occupies a required directory.'
+    $collisionBytes = Get-SnapshotBytes $collisionTarget
+    Assert-Throws { Copy-SchemaSnapshot $nestedBefore $collisionTarget } 'File/directory collisions must fail before any writes or deletions.'
+    Assert-Test ((Get-SnapshotBytes $collisionTarget) -ceq $collisionBytes) 'File/directory collision preflight must preserve all existing files.'
 
     $linkSource = Join-Path $temporary 'link-source'
     $null = [IO.Directory]::CreateDirectory($linkSource)

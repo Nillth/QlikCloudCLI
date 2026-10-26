@@ -43,7 +43,7 @@ pwsh -NoProfile -File ./QlikCloudCLI/Build.ps1 -Configuration Release -Test -Pac
 
 `QlikCloud/` contains the runtime SDK, `QlikCloudCLI/` contains the PowerShell module, and `tools/` contains the two C# generators. `schemas/qlik-cloud/` is the saved OpenAPI input. Normal builds generate from that snapshot without contacting a Qlik tenant or downloading replacement schemas. Fody/Costura embedding is disabled; dependency DLLs are staged beside the project DLLs.
 
-The weekly workflow checks Qlik's published OpenAPI schemas. Schema changes must pass generation, generator tests, operation-coverage checks, and both PowerShell acceptance suites before an automatic release. An unchanged snapshot produces no new version. Publishing requires the repository's release credentials and signing policy to be configured.
+The weekly workflow checks Qlik's published OpenAPI schemas and records added, deprecated, and removed APIs and operations in release notes. Deprecated commands remain generated and warn when used; removed definitions are retired from new builds. Schema changes must pass generation, generator tests, operation-coverage checks, and both PowerShell acceptance suites before an automatic release. An unchanged snapshot produces no new version. Publishing requires the repository's release credentials and signing policy to be configured.
 
 See [maintainer instructions](docs/MAINTAINING.md) for refreshing schemas, release configuration, versioning, and retrying a partial publication. Live tenant tests are optional and never run as part of public CI.
 

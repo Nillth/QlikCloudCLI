@@ -10,6 +10,8 @@ Engine commands use the same `QSE` names as the Engine-enabled QlikSenseCLI modu
 
 Namespaced APIs have distinct command nouns, such as `QCAnalyticsApps` and `QCWorkflowsAutomations`. Existing commands such as `QCApps` remain available. Check the exact route and request model in `commands.json` when choosing between them.
 
+Deprecated commands remain available while Qlik publishes their definitions and write a warning when used. The catalog marks deprecated operations and request models. Review the [release notes](https://github.com/Nillth/QlikCloudCLI/releases) for added, deprecated, and removed APIs before upgrading; the [guide](HOW-TO.md#deprecated-and-removed-apis) explains warnings and migration.
+
 ## Install from the PowerShell Gallery
 
 Install a published release from PSGallery for your Windows user:

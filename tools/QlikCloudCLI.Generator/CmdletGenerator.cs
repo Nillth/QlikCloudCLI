@@ -9,7 +9,7 @@ namespace QlikCloudCLI.Generator;
 public sealed class CmdletGenerator
 {
     internal static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
-    private sealed record Operation(string Api, string Path, string Verb, string Method, string Implementation);
+    private sealed record Operation(string Api, string Path, string Verb, string Method, string Implementation, bool Deprecated, string? DeprecationMessage);
 
     public CommandInventory Generate(string assemblyPath, string clientManifestPath, string outputDirectory, string rulesPath, bool check = false)
     {
@@ -41,7 +41,7 @@ public sealed class CmdletGenerator
         var operations = manifest.RootElement.GetProperty("apis").EnumerateArray().Where(api => !api.TryGetProperty("excluded", out _))
             .SelectMany(api => api.GetProperty("operations").EnumerateArray().Select(op => new Operation(
                 api.GetProperty("api").GetString()!, op.GetProperty("path").GetString()!, op.GetProperty("method").GetString()!.ToUpperInvariant(),
-                op.GetProperty("name").GetString()!, op.GetProperty("implementation").GetString()!)))
+                op.GetProperty("name").GetString()!, op.GetProperty("implementation").GetString()!, ReadDeprecated(op), ReadDeprecationMessage(op))))
             .OrderBy(op => op.Api, StringComparer.Ordinal).ThenBy(op => op.Path, StringComparer.Ordinal).ThenBy(op => op.Verb, StringComparer.Ordinal).ToArray();
         if (operations.Length == 0) throw new InvalidDataException("The client manifest contains no API operations.");
         if (operations.GroupBy(OperationKey, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() != 1)) throw new InvalidDataException("Duplicate operation in client manifest.");
@@ -106,6 +106,7 @@ public sealed class CmdletGenerator
                 Api = operation.Api, Path = operation.Path, HttpMethod = operation.Verb, CommandName = DefaultName(operation), ClientType = clientTypeName,
                 MethodName = method.Name, Implementation = operation.Implementation, Method = method,
                 OutputType = TypeNames.Format(outputType), RawResponseType = TypeNames.Format(resultType),
+                Deprecated = operation.Deprecated, DeprecationMessage = operation.Deprecated ? operation.DeprecationMessage : null,
                 SupportsShouldProcess = operation.Verb is not ("GET" or "HEAD" or "OPTIONS")
             };
             if (nameRules.TryGetValue(OperationKey(operation), out CommandNameRule? rule))
@@ -178,6 +179,28 @@ public sealed class CmdletGenerator
     }
 
     private static string OperationKey(Operation operation) => operation.Api + " " + operation.Verb + " " + operation.Path;
+    private static bool ReadDeprecated(JsonElement operation)
+    {
+        if (!operation.TryGetProperty("deprecated", out JsonElement value)) return false;
+        if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            throw new InvalidDataException("Operation deprecated metadata must be a Boolean.");
+        return value.GetBoolean();
+    }
+    private static string? ReadDeprecationMessage(JsonElement operation)
+    {
+        if (!operation.TryGetProperty("deprecationMessage", out JsonElement value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.String) throw new InvalidDataException("Operation deprecationMessage metadata must be a string or null.");
+        string? message = value.GetString();
+        return string.IsNullOrWhiteSpace(message) ? null : message;
+    }
+
+    private static (bool Deprecated, string? Message) ReadObsolete(MemberInfo member)
+    {
+        CustomAttributeData? attribute = member.GetCustomAttributesData().FirstOrDefault(value => value.AttributeType.FullName == "System.ObsoleteAttribute");
+        if (attribute == null) return (false, null);
+        string? message = attribute.ConstructorArguments.Count > 0 ? attribute.ConstructorArguments[0].Value as string : null;
+        return (true, string.IsNullOrWhiteSpace(message) ? null : message);
+    }
     private static HashSet<string> Placeholders(string path) => Regex.Matches(path, "\\{([^}]+)\\}").Select(m => TypeNames.Identifier(m.Groups[1].Value)).ToHashSet(StringComparer.OrdinalIgnoreCase);
     private static string DefaultName(Operation operation)
     {
@@ -217,10 +240,13 @@ public sealed class CmdletGenerator
         Type? collectionElement = TypeNames.CollectionElement(type);
         if (!apiByNamespace.TryGetValue(type.Namespace!, out string? api))
             throw new InvalidDataException("Request model namespace has no API identity in the client manifest: " + type.FullName);
+        var lifecycle = ReadObsolete(type);
+        if (!lifecycle.Deprecated) lifecycle = ReadObsolete(constructor);
         var command = new ModelCommand
         {
             CommandName = "New-QC" + TypeNames.Identifier(api) + TypeNames.Identifier(type.Name) + "Object", ModelType = TypeNames.Format(type), Api = api,
             Type = type, Constructor = constructor, SupportsJson = type.GetMethods(BindingFlags.Public | BindingFlags.Static).Any(m => m.Name == "FromJson" && m.GetParameters().Length == 1),
+            Deprecated = lifecycle.Deprecated, DeprecationMessage = lifecycle.Message,
             CollectionElementType = collectionElement == null ? null : TypeNames.Format(collectionElement)
         };
         foreach (ParameterInfo parameter in constructor.GetParameters())

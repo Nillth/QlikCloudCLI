@@ -45,12 +45,14 @@ function Get-SchemaFiles {
     }
 }
 
-function Test-GeneratorDeprecatedObject {
+function Test-DeprecatedSchemaObject {
     param($Value)
-    # Match SchemaTransforms.IsDeprecated: only Qlik's boolean true flag removes
-    # an object. Standard deprecated, strings, and false do not exclude code.
-    return $Value -is [Collections.IDictionary] -and
-        $Value['x-qlik-deprecated'] -is [bool] -and $Value['x-qlik-deprecated']
+    if ($Value -isnot [Collections.IDictionary]) { return $false }
+    foreach ($name in @('x-qlik-deprecated', 'deprecated')) {
+        # JSON keys and boolean values are exact: strings/numbers are not flags.
+        if (@($Value.Keys | Where-Object { $_ -ceq $name }).Count -and $Value[$name] -is [bool] -and $Value[$name]) { return $true }
+    }
+    return $false
 }
 
 function Get-SchemaInventory {
@@ -58,25 +60,31 @@ function Get-SchemaInventory {
     param([Parameter(Mandatory)][string] $Path)
     $apis = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
     $routes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $deprecatedApis = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $deprecatedRoutes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($file in Get-SchemaFiles $Path | Sort-Object RelativePath -CaseSensitive) {
         if ($file.RelativePath -ieq 'manifest.json') { continue }
         $content = (Get-Content -LiteralPath $file.FullName -Raw).Replace("`r`n", "`n").Replace("`r", "`n")
         $schema = $content | ConvertFrom-Json -AsHashtable
-        if (-not $schema.Contains('paths') -or (-not $schema.Contains('openapi') -and -not $schema.Contains('swagger'))) {
+        if ($schema -isnot [Collections.IDictionary] -or $schema['paths'] -isnot [Collections.IDictionary] -or (-not $schema.Contains('openapi') -and -not $schema.Contains('swagger'))) {
             throw "Invalid schema: $($file.RelativePath)"
         }
         # Git checkout line endings must not create a weekly false positive.
         $apis.Add($file.Api, [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($content))).ToLowerInvariant())
-        # Preserve raw hashes for change detection, but compare operations which
-        # generation retains. Removing an already-excluded operation is harmless;
-        # marking an active operation deprecated still appears as a removal.
-        if (Test-GeneratorDeprecatedObject $schema.paths) { continue }
+        $apiDeprecated = (Test-DeprecatedSchemaObject $schema) -or (Test-DeprecatedSchemaObject $schema['info'])
+        if ($apiDeprecated) { $null = $deprecatedApis.Add($file.Api) }
+        $pathsDeprecated = $apiDeprecated -or (Test-DeprecatedSchemaObject $schema.paths)
         foreach ($route in $schema.paths.Keys) {
-            if (Test-GeneratorDeprecatedObject $schema.paths[$route]) { continue }
+            if (-not $route.StartsWith('/', [StringComparison]::Ordinal)) { continue }
+            if ($route -match '[\r\n]' -or $schema.paths[$route] -isnot [Collections.IDictionary]) { throw "Invalid path item in $($file.RelativePath)." }
+            $pathDeprecated = $pathsDeprecated -or (Test-DeprecatedSchemaObject $schema.paths[$route])
             foreach ($method in $schema.paths[$route].Keys) {
                 if ($method -cin @('get','post','put','patch','delete','head','options','trace')) {
-                    if (Test-GeneratorDeprecatedObject $schema.paths[$route][$method]) { continue }
-                    $null = $routes.Add("$($file.Api) $($method.ToUpperInvariant()) $route")
+                    $operation = $schema.paths[$route][$method]
+                    if ($operation -isnot [Collections.IDictionary]) { throw "Invalid HTTP operation in $($file.RelativePath)." }
+                    $identity = "$($file.Api) $($method.ToUpperInvariant()) $route"
+                    $null = $routes.Add($identity)
+                    if ($pathDeprecated -or (Test-DeprecatedSchemaObject $operation)) { $null = $deprecatedRoutes.Add($identity) }
                 }
             }
         }
@@ -84,20 +92,57 @@ function Get-SchemaInventory {
     if ($apis.Count -eq 0) { throw 'Schema snapshot contains no API documents.' }
     $text = (@($apis.Keys | Sort-Object -CaseSensitive | ForEach-Object { "$_ $($apis[$_])" }) -join "`n") + "`n"
     $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($text))).ToLowerInvariant()
-    [pscustomobject]@{ Apis = $apis; Routes = $routes; Digest = $digest }
+    [pscustomobject]@{ Apis = $apis; Routes = $routes; DeprecatedApis = $deprecatedApis; DeprecatedRoutes = $deprecatedRoutes; Digest = $digest }
+}
+
+function Assert-SchemaSnapshotManifest {
+    param([Parameter(Mandatory)][string] $Path, [Parameter(Mandatory)] $Inventory)
+    $manifestPath = Join-Path $Path 'manifest.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'Schema snapshot copying requires its generator manifest.' }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($manifest -isnot [Collections.IDictionary] -or $manifest['generator'] -cne 'QlikCloud.Generator' -or $manifest['formatVersion'] -ne 1 -or $manifest['command'] -cne 'refresh' -or
+        $manifest['apis'] -isnot [array] -or $manifest['files'] -isnot [array]) { throw 'Invalid schema snapshot manifest.' }
+    foreach ($collection in @('apis','files')) {
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($entry in $manifest[$collection]) {
+            if ($entry -isnot [Collections.IDictionary]) { throw "Invalid $collection entry in schema snapshot manifest." }
+            $name = if ($collection -eq 'apis') { $entry['api'] } else { $entry['path'] }
+            if ($name -isnot [string] -or -not $seen.Add($name)) { throw "Duplicate or invalid $collection name in schema snapshot manifest." }
+            $api = if ($collection -eq 'files' -and $name.EndsWith('.json', [StringComparison]::Ordinal)) { $name.Substring(0, $name.Length - 5) } elseif ($collection -eq 'apis') { $name } else { $null }
+            if ($null -eq $api -or -not $Inventory.Apis.ContainsKey($api) -or $entry['sha256'] -isnot [string] -or $entry['sha256'] -notmatch '^[a-fA-F0-9]{64}$' -or $entry['sha256'] -ine $Inventory.Apis[$api]) {
+                throw "Schema manifest $collection entry does not match the snapshot: $name"
+            }
+        }
+        if ($seen.Count -ne $Inventory.Apis.Count) { throw "Schema manifest $collection inventory does not match the snapshot." }
+    }
 }
 
 function Copy-SchemaSnapshot {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string] $Source, [Parameter(Mandatory)][string] $Destination)
-    # Complete both walks before writing so unsafe entries cannot produce a partial copy.
+    $sourceRoot = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Source))
+    $root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Destination))
+    if ($sourceRoot.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
+        $sourceRoot.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
+        $root.StartsWith($sourceRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Source and destination schema snapshots must not overlap.' }
+    # Finish validation of both trees, all paths, and both ownership manifests
+    # before copying or deleting anything. Unknown JSON is never presumed owned.
     $entries = @(Get-SchemaFiles $Source -IncludeDirectories)
     $files = @($entries | Where-Object { -not $_.IsDirectory })
-    $root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Destination))
+    $sourceInventory = Get-SchemaInventory $Source
+    Assert-SchemaSnapshotManifest $Source $sourceInventory
     Assert-SchemaDirectoryPath $root
     $existing = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $existingEntries = @()
+    $removedFiles = @()
     if (Test-Path -LiteralPath $root) {
-        foreach ($entry in Get-SchemaFiles $root -IncludeDirectories) { $existing.Add($entry.RelativePath, $entry.RelativePath) }
+        $existingEntries = @(Get-SchemaFiles $root -IncludeDirectories)
+        foreach ($entry in $existingEntries) { $existing.Add($entry.RelativePath, $entry.RelativePath) }
+        if (@($existingEntries | Where-Object { -not $_.IsDirectory }).Count) {
+            $existingInventory = Get-SchemaInventory $root
+            Assert-SchemaSnapshotManifest $root $existingInventory
+            $removedFiles = @($existingEntries | Where-Object { -not $_.IsDirectory -and $_.RelativePath -cne 'manifest.json' -and -not $sourceInventory.Apis.ContainsKey($_.Api) })
+        }
     }
     foreach ($entry in $entries) {
         if ($existing.ContainsKey($entry.RelativePath) -and $existing[$entry.RelativePath] -cne $entry.RelativePath) {
@@ -107,11 +152,19 @@ function Copy-SchemaSnapshot {
         if (-not $target.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Schema copy target is outside the snapshot directory.' }
         if ((Test-Path -LiteralPath $target) -and (Get-Item -LiteralPath $target -Force).PSIsContainer -ne $entry.IsDirectory) { throw "Schema copy would replace a file with a directory or a directory with a file: $($entry.RelativePath)" }
     }
-    foreach ($file in $files) {
+    foreach ($file in $removedFiles) {
+        $target = [IO.Path]::GetFullPath($file.FullName)
+        if (-not $target.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Schema removal target is outside the snapshot directory.' }
+    }
+    foreach ($file in $files | Where-Object RelativePath -CNE 'manifest.json') {
         $target = Join-Path $root $file.RelativePath
         $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
     }
+    # Remove only obsolete schema files verified against the previous manifest.
+    # Leave unknown non-JSON files and directories alone; never recursively delete.
+    foreach ($file in $removedFiles) { Remove-Item -LiteralPath $file.FullName -Force }
+    Copy-Item -LiteralPath (Join-Path $sourceRoot 'manifest.json') -Destination (Join-Path $root 'manifest.json') -Force
 }
 
 function Compare-SchemaInventory {
@@ -124,15 +177,78 @@ function Compare-SchemaInventory {
         RemovedApis = @($Before.Apis.Keys | Where-Object { -not $After.Apis.ContainsKey($_) } | Sort-Object)
         AddedRoutes = @($After.Routes | Where-Object { -not $Before.Routes.Contains($_) } | Sort-Object)
         RemovedRoutes = @($Before.Routes | Where-Object { -not $After.Routes.Contains($_) } | Sort-Object)
+        DeprecatedApis = @($After.DeprecatedApis | Where-Object { -not $Before.DeprecatedApis.Contains($_) } | Sort-Object)
+        DeprecatedRoutes = @($After.DeprecatedRoutes | Where-Object { -not $Before.DeprecatedRoutes.Contains($_) } | Sort-Object)
     }
 }
 
-function Assert-CompatibleSchemaUpdate {
+function New-SchemaReleaseState {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] $Difference)
-    if ($Difference.RemovedApis.Count -ne 0 -or $Difference.RemovedRoutes.Count -ne 0) {
-        throw ('Automatic release stopped: upstream removed APIs or active operations. Review these removals explicitly before updating the saved snapshot: ' + (@($Difference.RemovedApis) + @($Difference.RemovedRoutes) -join '; '))
+    param(
+        [Parameter(Mandatory)][string] $Version,
+        [Parameter(Mandatory)][string] $PreviousVersion,
+        [Parameter(Mandatory)] $Inventory,
+        [Parameter(Mandatory)] $Difference,
+        [string[]] $ReleaseNotes = @()
+    )
+    [pscustomobject][ordered]@{
+        formatVersion = 2; version = $Version; previousVersion = $PreviousVersion; schemaDigest = $Inventory.Digest
+        changedApis = @($Difference.AddedApis) + @($Difference.ChangedApis)
+        releaseNotes = @($ReleaseNotes)
+        schemaChanges = [ordered]@{
+            addedApis = @($Difference.AddedApis); changedApis = @($Difference.ChangedApis)
+            deprecatedApis = @($Difference.DeprecatedApis); removedApis = @($Difference.RemovedApis)
+            addedOperations = @($Difference.AddedRoutes); deprecatedOperations = @($Difference.DeprecatedRoutes)
+            removedOperations = @($Difference.RemovedRoutes)
+            currentDeprecatedApis = @($Inventory.DeprecatedApis | Sort-Object -CaseSensitive)
+            currentDeprecatedOperations = @($Inventory.DeprecatedRoutes | Sort-Object -CaseSensitive)
+        }
     }
+}
+
+function Get-SchemaReleaseNotes {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)] $State, [Parameter(Mandatory)][string] $Commit)
+    # JSON round-trip gives identical behavior for freshly created, tagged, and
+    # resumed state, including old format-1 candidates without lifecycle fields.
+    $candidate = $State | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable
+    if ($candidate['formatVersion'] -notin @(1,2)) { throw 'Unsupported release candidate state format.' }
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($line in @("QlikCloudCLI $($candidate['version'])", '', 'Built and tested with Windows PowerShell 5.1 and PowerShell 7.', '', "Schema snapshot SHA256: $($candidate['schemaDigest'])", "Source commit: $Commit", '')) { $lines.Add($line) }
+    if ($candidate.Contains('releaseNotes')) {
+        if ($candidate['releaseNotes'] -isnot [array]) { throw 'Invalid candidate release notes.' }
+        foreach ($note in $candidate['releaseNotes']) {
+            if ($note -isnot [string] -or [string]::IsNullOrWhiteSpace($note)) { throw 'Invalid candidate release note.' }
+            $lines.Add('- ' + $note)
+        }
+        if ($candidate['releaseNotes'].Count) { $lines.Add('') }
+    }
+    if ($candidate['formatVersion'] -eq 1) {
+        $lines.Add('Updated API schemas:')
+        foreach ($api in $candidate['changedApis']) { $lines.Add('- ' + $api) }
+        if (-not $candidate['changedApis'].Count) { $lines.Add('- No schema changes were recorded for this candidate.') }
+        $lines.Add('')
+        $lines.Add('Detailed API and operation lifecycle changes were not recorded by this legacy candidate format.')
+    }
+    else {
+        $changes = $candidate['schemaChanges']
+        if ($changes -isnot [Collections.IDictionary]) { throw 'Candidate state is missing schema lifecycle changes.' }
+        $headings = [ordered]@{ addedApis = 'Added APIs'; changedApis = 'Updated API schemas'; deprecatedApis = 'Newly deprecated APIs'; removedApis = 'Removed APIs'; addedOperations = 'Added HTTP operations'; deprecatedOperations = 'Newly deprecated HTTP operations'; removedOperations = 'Removed HTTP operations'; currentDeprecatedApis = 'Deprecated APIs in this snapshot'; currentDeprecatedOperations = 'Deprecated HTTP operations in this snapshot' }
+        $count = 0
+        foreach ($entry in $headings.GetEnumerator()) {
+            if ($changes[$entry.Key] -isnot [array]) { throw "Candidate state is missing lifecycle list: $($entry.Key)" }
+            if (-not $changes[$entry.Key].Count) { continue }
+            $lines.Add($entry.Value + ':')
+            foreach ($value in $changes[$entry.Key]) {
+                if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or $value -match '[\r\n]') { throw "Invalid candidate lifecycle entry: $($entry.Key)" }
+                $lines.Add('- ' + $value)
+                $count++
+            }
+            $lines.Add('')
+        }
+        if (-not $count) { $lines.Add('No schema content changes; this release contains source or packaging updates.') }
+    }
+    return ($lines -join "`n") + "`n"
 }
 
 function Get-NextPatchVersion {
@@ -223,4 +339,4 @@ function Write-ReleaseJson {
     [IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 12) + "`n", [Text.UTF8Encoding]::new($false))
 }
 
-Export-ModuleMember -Function Get-SchemaInventory,Copy-SchemaSnapshot,Compare-SchemaInventory,Assert-CompatibleSchemaUpdate,Get-NextPatchVersion,Get-ReleaseDisposition,Assert-SafeArchive,Assert-ModuleFileHashes,Assert-ReleaseSigning,Assert-GalleryPackageContent,Write-ReleaseJson
+Export-ModuleMember -Function Get-SchemaInventory,Copy-SchemaSnapshot,Compare-SchemaInventory,New-SchemaReleaseState,Get-SchemaReleaseNotes,Get-NextPatchVersion,Get-ReleaseDisposition,Assert-SafeArchive,Assert-ModuleFileHashes,Assert-ReleaseSigning,Assert-GalleryPackageContent,Write-ReleaseJson

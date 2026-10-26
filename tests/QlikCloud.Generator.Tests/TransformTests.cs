@@ -72,7 +72,7 @@ public class TransformTests
 	}
 
 	[Fact]
-	public void DeprecatedSchemaReferencesAreRemovedWithoutConfusingPropertyNames()
+	public void DeprecatedOperationsModelsPropertiesAndReferencesAreRetained()
 	{
 		var document = JObject.Parse("""
 		{
@@ -96,20 +96,18 @@ public class TransformTests
 		}
 		""");
 		var actual = SchemaTransforms.Apply("Example", document);
-		Assert.Null(actual.SelectToken("components.schemas['old-schema']"));
-		Assert.Null(actual.SelectToken("components.schemas.OldAlias"));
-		Assert.Null(actual.SelectToken("components.schemas.AliasConsumer.properties"));
-		Assert.NotNull(actual.SelectToken("components.schemas.legacyField"));
-		Assert.NotNull(actual.SelectToken("components.schemas.KeepEmpty"));
-		Assert.NotNull(actual.SelectToken("components.schemas.PrunedEmpty"));
-		Assert.NotNull(actual.SelectToken("components.schemas.RefToPrunedEmpty"));
-		Assert.Null(actual.SelectToken("components.schemas.Container.properties.gone"));
-		Assert.Null(actual.SelectToken("components.schemas.Container.properties.legacyField"));
+		Assert.True(JToken.DeepEquals(document, actual));
+		Assert.NotSame(document, actual);
+		Assert.NotNull(actual.SelectToken("components.schemas['old-schema']"));
+		Assert.NotNull(actual.SelectToken("components.schemas.OldAlias"));
+		Assert.NotNull(actual.SelectToken("components.schemas.AliasConsumer.properties.gone"));
+		Assert.NotNull(actual.SelectToken("components.schemas.Container.properties.gone"));
+		Assert.NotNull(actual.SelectToken("components.schemas.Container.properties.legacyField"));
 		Assert.Equal("#/components/schemas/legacyField", (string?)actual.SelectToken("components.schemas.Container.properties.keep['$ref']"));
-		Assert.Equal("[\"keep\",\"inherited\"]", actual.SelectToken("components.schemas.Container.required")!.ToString(Newtonsoft.Json.Formatting.None));
-		Assert.Null(actual.SelectToken("components.schemas.OnlyOld.required"));
-		Assert.Single((JArray)actual.SelectToken("components.schemas.Combined.allOf")!);
-		Assert.Null(actual.SelectToken("paths['/old']"));
+		Assert.Equal("[\"gone\",\"legacyField\",\"keep\",\"inherited\"]", actual.SelectToken("components.schemas.Container.required")!.ToString(Newtonsoft.Json.Formatting.None));
+		Assert.NotNull(actual.SelectToken("components.schemas.OnlyOld.required"));
+		Assert.Equal(2, ((JArray)actual.SelectToken("components.schemas.Combined.allOf")!).Count);
+		Assert.NotNull(actual.SelectToken("paths['/old']"));
 		Assert.NotNull(actual.SelectToken("paths['/live']"));
 		Assert.True(JToken.DeepEquals(actual, SchemaTransforms.Apply("Example", actual)));
 	}

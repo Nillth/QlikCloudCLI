@@ -143,6 +143,54 @@ $getCollectionItem = Find-Operation collections get '/api/v1/collections/{collec
 $listAudits = Find-Operation audits get '/api/v1/audits'
 $getAudit = Find-Operation audits get '/api/v1/audits/{id}'
 $userConstructor = 'New-QCUsersUserPostSchemaObject'
+$deprecatedProbe = $operations | Where-Object {
+    $_.deprecated -and $_.httpMethod -ieq 'GET' -and $_.path -notmatch '\{' -and
+    @($_.parameters | Where-Object mandatory).Count -eq 0
+} | Select-Object -First 1
+
+Test-Case 'Deprecated API warnings continue to HTTP unless WarningAction stops them' {
+    # This uses an installed deprecated GET when upstream still supplies one.
+    # The generator fixtures separately cover deprecation without upstream input.
+    if ($null -eq $deprecatedProbe) { return }
+    $fixture = New-Fixture
+    $fixture.Handler.QueueJson(404, '{"errors":[]}')
+    $warnings = @()
+    $command = Get-Command $deprecatedProbe.commandName -Module $module.Name
+    try { & $command -Connection $fixture.Connection -WarningVariable warnings -WarningAction Continue -ErrorAction Stop | Out-Null }
+    catch { } # The mock deliberately returns an API error after the warning.
+    Assert-Equal 1 $warnings.Count 'A deprecated operation must emit exactly one lifecycle warning.'
+    Assert-True ([string]$warnings[0] -match 'deprecated') 'The warning must explain deprecation.'
+    Assert-Equal 1 $fixture.Handler.Count 'The default warning behavior must still send the request.'
+    Assert-Equal $deprecatedProbe.path ([uri]$fixture.Handler.Requests[0].Uri).AbsolutePath 'The deprecated operation dispatched a different route.'
+
+    $stopped = New-Fixture
+    $failure = $null
+    try { & $command -Connection $stopped.Connection -WarningAction Stop -ErrorAction Stop | Out-Null }
+    catch { $failure = $_ }
+    Assert-True ($null -ne $failure) 'WarningAction Stop must terminate a deprecated invocation.'
+    Assert-Equal 0 $stopped.Handler.Count 'WarningAction Stop must act before any HTTP request.'
+}
+
+Test-Case 'Active API operations do not emit deprecation warnings' {
+    Assert-True (-not $listUsers.deprecated) 'The active test operation unexpectedly became deprecated.'
+    $fixture = New-Fixture
+    $fixture.Handler.QueueJson(200, '{"data":[]}')
+    $warnings = @()
+    Get-QCUsers -Connection $fixture.Connection -WarningVariable warnings -WarningAction Continue | Out-Null
+    Assert-Equal 0 $warnings.Count 'An active operation must remain quiet.'
+    Assert-Equal 1 $fixture.Handler.Count 'An active operation must still execute.'
+}
+
+Test-Case 'Deprecated model constructors expose lifecycle warnings when used' {
+    $deprecatedModel = $constructors | Where-Object { $_.deprecated -and $_.supportsJson } | Select-Object -First 1
+    if ($null -eq $deprecatedModel) { return }
+    $command = Get-Command $deprecatedModel.commandName -Module $module.Name
+    $warnings = @()
+    try { & $command -Json '{}' -WarningVariable warnings -WarningAction Continue -ErrorAction Stop | Out-Null }
+    catch { } # Required model data may reject {}, after emitting the warning.
+    Assert-Equal 1 $warnings.Count 'A deprecated constructor must warn exactly once.'
+    Assert-True ([string]$warnings[0] -match 'deprecated') 'The constructor warning must explain deprecation.'
+}
 
 Test-Case 'Package targets .NET Standard 2.0 and both Windows PowerShell 5.1 and Core' {
     $manifest = Import-PowerShellDataFile -LiteralPath $ModulePath

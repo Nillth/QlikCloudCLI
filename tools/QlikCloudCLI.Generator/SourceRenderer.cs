@@ -48,6 +48,9 @@ internal static class SourceRenderer
         {
             output.Append("                case ").Append(Literal(command.ParameterSetName)).AppendLine(":");
             output.AppendLine("                {");
+            if (command.Deprecated)
+                output.Append("                    WriteWarning(").Append(Literal(command.CommandName + " ParameterSet " + command.ParameterSetName + " uses a deprecated API: "
+                    + command.HttpMethod + " " + command.Path + "." + MessageSuffix(command.DeprecationMessage))).AppendLine(");");
             output.Append("                    var target = ").Append(Literal(command.HttpMethod + " " + command.Path)).AppendLine(";");
             foreach (CommandParameter parameter in command.Parameters.Where(p => p.PipelineByPropertyName))
                 output.Append("                    target = target.Replace(").Append(Literal("{" + parameter.ClrName + "}")).Append(", global::System.Convert.ToString(")
@@ -102,6 +105,9 @@ internal static class SourceRenderer
         output.AppendLine();
         output.AppendLine("        protected override void ProcessRecord()");
         output.AppendLine("        {");
+        if (command.Deprecated)
+            output.Append("            WriteWarning(").Append(Literal(command.CommandName + " constructs a deprecated SDK model: "
+                + command.ModelType.Replace("global::", "", StringComparison.Ordinal) + "." + MessageSuffix(command.DeprecationMessage))).AppendLine(");");
         output.Append("            ").Append(command.ModelType).AppendLine(" model;");
         if (command.SupportsJson)
             output.AppendLine("            if (ParameterSetName == \"InputObject\") model = ConvertModelFromInputObject(InputObject);");
@@ -137,17 +143,22 @@ internal static class SourceRenderer
 
     public static string Help(CommandInventory inventory)
     {
-        var output = new StringBuilder("# QlikCloudCLI generated commands\n\nThese commands call the typed QlikCloud.dll clients. Connect with Connect-QlikCloud or pass -Connection. Requests run once per pipeline record. Direct GET list/detail pairs share a command: List is the default parameter set and supplying its required identifier selects By<Id>. Literal nested resources retain separate commands. Query parameters belong only to their declared sets. Mutation commands support -WhatIf and -Confirm. Default output is the typed response body; -RawResponse retains the APIResponse wrapper. File downloads return a FileResponse containing Stream and must be disposed after reading. Collection responses remain their typed API envelope; no implicit paging is performed.\n\nModel constructors accept named properties and, where supported, -Json or a typed -InputObject. InputObject copies the model before explicitly bound overrides; collections accept -Items. FileParameter constructors take an open -Data stream, optional -FileName and -ContentType. Copying a FileParameter preserves its stream reference. Upload streams are consumed by the SDK request.\n\n## Endpoints\n\n| Command | Parameter set | HTTP operation | Required parameters |\n| --- | --- | --- | --- |\n");
+        var output = new StringBuilder("# QlikCloudCLI generated commands\n\nThese commands call the typed QlikCloud.dll clients. Connect with Connect-QlikCloud or pass -Connection. Requests run once per pipeline record. Direct GET list/detail pairs share a command: List is the default parameter set and supplying its required identifier selects By<Id>. Literal nested resources retain separate commands. Query parameters belong only to their declared sets. Mutation commands support -WhatIf and -Confirm. Default output is the typed response body; -RawResponse retains the APIResponse wrapper. File downloads return a FileResponse containing Stream and must be disposed after reading. Collection responses remain their typed API envelope; no implicit paging is performed.\n\nModel constructors accept named properties and, where supported, -Json or a typed -InputObject. InputObject copies the model before explicitly bound overrides; collections accept -Items. FileParameter constructors take an open -Data stream, optional -FileName and -ContentType. Copying a FileParameter preserves its stream reference. Upload streams are consumed by the SDK request.\n\n## Endpoints\n\n| Command | Parameter set | HTTP operation | Required parameters | Lifecycle |\n| --- | --- | --- | --- | --- |\n");
         foreach (EndpointCommand command in inventory.Operations.OrderBy(c => c.CommandName, StringComparer.Ordinal))
             output.Append("| `").Append(command.CommandName).Append("` | `").Append(command.ParameterSetName).Append("` | `").Append(command.HttpMethod).Append(' ').Append(command.Path).Append("` | ")
-                .Append(string.Join(", ", command.Parameters.Where(p => p.Mandatory).Select(p => "`-" + p.Name + "`"))).AppendLine(" |");
-        output.AppendLine("\n## Model constructors\n\n| Command | Model |\n| --- | --- |");
+                .Append(string.Join(", ", command.Parameters.Where(p => p.Mandatory).Select(p => "`-" + p.Name + "`"))).Append(" | ")
+                .Append(Lifecycle(command.Deprecated, command.DeprecationMessage)).AppendLine(" |");
+        output.AppendLine("\n## Model constructors\n\n| Command | Model | Lifecycle |\n| --- | --- | --- |");
         foreach (ModelCommand command in inventory.Constructors.OrderBy(c => c.CommandName, StringComparer.Ordinal))
-            output.Append("| `").Append(command.CommandName).Append("` | `").Append(command.ModelType.Replace("global::", "", StringComparison.Ordinal)).AppendLine("` |");
-        output.AppendLine("\n`commands.json` format v2 records distinct commands and every operation's parameter set, parameter types, SDK method binding, aliases, output types, and explicit naming policies.");
+            output.Append("| `").Append(command.CommandName).Append("` | `").Append(command.ModelType.Replace("global::", "", StringComparison.Ordinal)).Append("` | ")
+                .Append(Lifecycle(command.Deprecated, command.DeprecationMessage)).AppendLine(" |");
+        output.AppendLine("\nDeprecated operations and request models remain available. Calling a deprecated route warns for its selected parameter set; a live sibling route does not warn. Deprecated model constructors also warn. These are normal PowerShell warnings, controlled by -WarningAction and $WarningPreference. -WarningAction Stop prevents the request or model creation.");
+        output.AppendLine("\n`commands.json` format v2 records distinct commands and every operation's parameter set, parameter types, SDK method binding, aliases, output types, and explicit naming policies. Each operation and constructor includes deprecated and deprecationMessage lifecycle metadata.");
         return Normalize(output.ToString());
     }
 
     private static string Xml(string text) => text.Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal).Replace(">", "&gt;", StringComparison.Ordinal);
+    private static string MessageSuffix(string? message) => string.IsNullOrWhiteSpace(message) ? "" : " " + message;
+    private static string Lifecycle(bool deprecated, string? message) => !deprecated ? "Active" : "Deprecated" + (string.IsNullOrWhiteSpace(message) ? "" : ": " + Xml(message).Replace("|", "\\|", StringComparison.Ordinal).Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal));
     private static string Normalize(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 }

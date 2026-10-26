@@ -79,6 +79,23 @@ module, not the separate qlik executable: do not substitute qlik CLI syntax.
 Get-Help currently provides native cmdlet syntax; there is no generated MAML
 manual. Get-Command -Syntax and COMMANDS.md are the reliable local entry points.
 
+API LIFECYCLE AND WARNINGS
+
+operations and constructors in commands.json include deprecated and
+deprecationMessage. Prefer active APIs for new scripts. A deprecated command
+remains callable while its schema definition exists and emits a normal
+PowerShell warning when selected. In grouped commands, deprecation belongs to
+the selected operation/parameter set; do not label every sibling deprecated.
+Deprecated model constructors also warn. Preserve those warnings unless the
+user explicitly asks to change WarningAction. -WarningAction Stop prevents
+the deprecated operation from issuing its request.
+
+Check release notes for added, deprecated, and removed APIs/operations before
+upgrading a script. Removed definitions are absent from newer generated modules;
+an older command does not imply the server still supports it. Follow Qlik's
+documented replacement mapping and compare parameters and response shapes.
+Never invent aliases or silently swap a deprecated API for a similarly named one.
+
 ENVIRONMENT AND IMPORT
 
 Target Windows PowerShell 5.1 (Desktop), included with Windows. Run scripts with

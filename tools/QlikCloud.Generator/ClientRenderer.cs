@@ -29,6 +29,7 @@ public sealed class ClientRenderer
         var operations = new List<(string Path, JObject Item, string Verb, JObject Operation, string BaseName)>();
         foreach (var path in ((JObject?)document["paths"] ?? throw new InvalidDataException("Schema has no paths.")).Properties())
         {
+            if (path.Name.StartsWith("x-", StringComparison.Ordinal) || path.Name is "deprecated" or "deprecationMessage") continue;
             var item = Resolve(path.Value);
             foreach (var method in item.Properties().Where(p => Verbs.Contains(p.Name)))
                 operations.Add((path.Name, item, method.Name, Resolve(method.Value), MethodBase(path.Name)));
@@ -43,6 +44,8 @@ public sealed class ClientRenderer
         {
             string name = op.BaseName + (groups[op.BaseName] > 1 ? ModelRenderer.Identifier(op.Verb) : "");
             string key = $"{api} {op.Verb.ToUpperInvariant()} {op.Path}";
+            string? deprecationMessage = DeprecationPolicy.Message(key, document, document["info"] as JObject,
+                document["paths"] as JObject, op.Item, op.Operation);
             if (methodNames.TryGetValue(key, out string? compatibilityName))
             {
                 if (!System.Text.RegularExpressions.Regex.IsMatch(compatibilityName, @"^[A-Za-z_][A-Za-z0-9_]*$")) throw new InvalidDataException("Invalid compatibility method name: " + compatibilityName);
@@ -50,7 +53,7 @@ public sealed class ClientRenderer
             }
             if (customOperations.Contains(key))
             {
-                Operations.Add(new { path = op.Path, method = op.Verb, name, implementation = "custom" });
+                Operations.Add(new { path = op.Path, method = op.Verb, name, implementation = "custom", deprecated = deprecationMessage != null, deprecationMessage });
                 continue;
             }
             var parameters = Parameters(op.Item, op.Operation);
@@ -72,10 +75,12 @@ public sealed class ClientRenderer
             string declarations = string.Join(", ", parameters.Select(p => $"{p.Type} {p.Name}" + (p.Required ? "" : " = null")));
             string comma = parameters.Count == 0 ? "" : ", ";
             methods.AppendLine("        /// <summary>" + Xml((string?)op.Operation["summary"] ?? key) + "</summary>");
+            if (deprecationMessage != null) methods.AppendLine("        [global::System.Obsolete(" + Literal(deprecationMessage) + ")]");
             methods.AppendLine($"        public virtual {returnType ?? "APIResponse"} {name}({declarations})");
             methods.AppendLine("        {");
             methods.AppendLine($"            return System.Threading.Tasks.Task.Run(async () => await {name}Async({args}{comma}System.Threading.CancellationToken.None)).GetAwaiter().GetResult(){(returnType != null && !file ? ".Object" : "")};");
             methods.AppendLine("        }");
+            if (deprecationMessage != null) methods.AppendLine("        [global::System.Obsolete(" + Literal(deprecationMessage) + ")]");
             methods.AppendLine($"        public virtual async System.Threading.Tasks.Task<{wrapped}> {name}Async({declarations}{comma}System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))");
             methods.AppendLine("        {");
             foreach (var p in parameters.Where(p => p.Required && !IsValueType(p.Type)))
@@ -149,7 +154,7 @@ public sealed class ClientRenderer
             methods.AppendLine("                finally { if (__qcDisposeResponse) __qcResponse.Dispose(); }");
             methods.AppendLine("            }");
             methods.AppendLine("        }");
-            Operations.Add(new { path = op.Path, method = op.Verb, name, implementation = "generated" });
+            Operations.Add(new { path = op.Path, method = op.Verb, name, implementation = "generated", deprecated = deprecationMessage != null, deprecationMessage });
         }
         string helper = File.ReadAllText(Path.Combine(templateDirectory, "ClientHelpers.cs.template"));
         string modelSource = models.RenderModels();
