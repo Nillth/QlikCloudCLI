@@ -45,7 +45,7 @@
     },
     {
       "api": "apps",
-      "sha256": "ca801ffe9b66c448aff7438e543b54fed513b1181193614cbcca09ed0644b4e5"
+      "sha256": "e101be682ecbf5d3be5127c19a4ad7190d36033977c08cba647fdcaa05e2bf36"
     },
     {
       "api": "assistants",
@@ -221,7 +221,7 @@
     },
     {
       "api": "ml",
-      "sha256": "6427df56e5dd6c1fd807e9d4544e5c356cd863b01473dba673999260055528ea"
+      "sha256": "e1b4996510055a8a202d9b13d0de133c5a281b6f9b971a007ea1e37388638f99"
     },
     {
       "api": "notes",
@@ -237,7 +237,7 @@
     },
     {
       "api": "oauth-clients",
-      "sha256": "7dbbed43ded73fd2d9a403c8e891dca49700b1c4802507d2e5d595fb6f3ff5ab"
+      "sha256": "60e6baf3e47331cc52cd368fb28878a2bbe6514e81ed8677ebc26ae7ede0afa5"
     },
     {
       "api": "oauth-tokens",
@@ -265,7 +265,7 @@
     },
     {
       "api": "reports",
-      "sha256": "afcba61c975f47a37da995c7a2bc19b9ca617326968906e54ed49f8cb30c38d4"
+      "sha256": "d619603fb5d723b7ef9c0bbdfdf7ed1bbf15a36124eb421f9f7ba5bbb82b7afd"
     },
     {
       "api": "roles",
@@ -273,7 +273,7 @@
     },
     {
       "api": "scheduling/tasks",
-      "sha256": "239fcc793e5e0dae8f2515060448f8a2183f48a72164f03c83bdab71a8e3a35b"
+      "sha256": "7df6c4fe8769dec6b35b1fb2287cbe2b505dd4d73576cfca600bb2ebeefbee92"
     },
     {
       "api": "sharing-tasks",
@@ -383,7 +383,7 @@
     },
     {
       "path": "apps.json",
-      "sha256": "ca801ffe9b66c448aff7438e543b54fed513b1181193614cbcca09ed0644b4e5"
+      "sha256": "e101be682ecbf5d3be5127c19a4ad7190d36033977c08cba647fdcaa05e2bf36"
     },
     {
       "path": "assistants.json",
@@ -559,7 +559,7 @@
     },
     {
       "path": "ml.json",
-      "sha256": "6427df56e5dd6c1fd807e9d4544e5c356cd863b01473dba673999260055528ea"
+      "sha256": "e1b4996510055a8a202d9b13d0de133c5a281b6f9b971a007ea1e37388638f99"
     },
     {
       "path": "notes.json",
@@ -571,7 +571,7 @@
     },
     {
       "path": "oauth-clients.json",
-      "sha256": "7dbbed43ded73fd2d9a403c8e891dca49700b1c4802507d2e5d595fb6f3ff5ab"
+      "sha256": "60e6baf3e47331cc52cd368fb28878a2bbe6514e81ed8677ebc26ae7ede0afa5"
     },
     {
       "path": "oauth-tokens.json",
@@ -603,7 +603,7 @@
     },
     {
       "path": "reports.json",
-      "sha256": "afcba61c975f47a37da995c7a2bc19b9ca617326968906e54ed49f8cb30c38d4"
+      "sha256": "d619603fb5d723b7ef9c0bbdfdf7ed1bbf15a36124eb421f9f7ba5bbb82b7afd"
     },
     {
       "path": "roles.json",
@@ -611,7 +611,7 @@
     },
     {
       "path": "scheduling/tasks.json",
-      "sha256": "239fcc793e5e0dae8f2515060448f8a2183f48a72164f03c83bdab71a8e3a35b"
+      "sha256": "7df6c4fe8769dec6b35b1fb2287cbe2b505dd4d73576cfca600bb2ebeefbee92"
     },
     {
       "path": "sharing-tasks.json",
