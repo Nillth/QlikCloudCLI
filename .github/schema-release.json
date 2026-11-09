@@ -1,31 +1,46 @@
 {
   "formatVersion": 2,
-  "version": "2.2.1",
-  "previousVersion": "2.2.0",
-  "schemaDigest": "708f06218ae9fe7c520108cc7dfa7c07b9e9a576d7a7f1bb59a71f9f0ce950a5",
+  "version": "2.2.2",
+  "previousVersion": "2.2.1",
+  "schemaDigest": "3c5ed9dab9aad4da392605b3490ac8dd3a3985f8a5cd3438c32c88f2a808436f",
   "changedApis": [
-    "apps",
+    "core/webhooks",
+    "data-governance/data-contracts",
+    "data-governance/data-qualities",
     "ml",
-    "oauth-clients",
-    "reports",
-    "scheduling/tasks"
+    "oauth",
+    "reloads",
+    "scheduling/tasks",
+    "webhooks"
   ],
   "releaseNotes": [],
   "schemaChanges": {
-    "addedApis": [],
+    "addedApis": [
+      "core/webhooks"
+    ],
     "changedApis": [
-      "apps",
+      "data-governance/data-contracts",
+      "data-governance/data-qualities",
       "ml",
-      "oauth-clients",
-      "reports",
-      "scheduling/tasks"
+      "oauth",
+      "reloads",
+      "scheduling/tasks",
+      "webhooks"
     ],
     "deprecatedApis": [],
     "removedApis": [],
     "addedOperations": [
-      "scheduling/tasks POST /api/scheduling/tasks/resources/{id}/actions/reload/on-dataset-updated",
-      "scheduling/tasks POST /api/scheduling/tasks/resources/{id}/actions/reload/on-task-event",
-      "scheduling/tasks POST /api/scheduling/tasks/resources/{id}/actions/reload/on-time-schedule"
+      "core/webhooks DELETE /api/core/webhooks/{id}",
+      "core/webhooks GET /api/core/webhooks",
+      "core/webhooks GET /api/core/webhooks/{id}",
+      "core/webhooks GET /api/core/webhooks/{id}/deliveries",
+      "core/webhooks GET /api/core/webhooks/{id}/deliveries/{deliveryId}",
+      "core/webhooks GET /api/core/webhooks/event-types",
+      "core/webhooks PATCH /api/core/webhooks/{id}",
+      "core/webhooks POST /api/core/webhooks",
+      "core/webhooks POST /api/core/webhooks/{id}/deliveries/{deliveryId}/actions/resend",
+      "core/webhooks PUT /api/core/webhooks/{id}",
+      "data-governance/data-qualities POST /api/data-governance/data-qualities/global-results/data-quality-rules/actions/filter"
     ],
     "deprecatedOperations": [],
     "removedOperations": [],

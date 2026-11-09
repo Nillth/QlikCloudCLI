@@ -108,6 +108,10 @@
       "sha256": "82bb984938ca7b94cf989584c731c3829368c8682e8d82bc5c79fa9b3d0af301"
     },
     {
+      "api": "core/webhooks",
+      "sha256": "0784162a71f5f36d9b5b9e08e89c5f39fd34353cdfc1636a6f4dcdb43dc8caf7"
+    },
+    {
       "api": "csp-origins",
       "sha256": "75751fe6c567f564b0ad9295f03fbe1a5bb3780b64a1daa4412369b864e6a8b8"
     },
@@ -137,7 +141,7 @@
     },
     {
       "api": "data-governance/data-contracts",
-      "sha256": "2eb6b4880a2145e637523f615ef5ec497fb119de421651f970c8257517897417"
+      "sha256": "bc058e0acc615c41b100a8445585277d52862ea10d2f5f40499110382fa66571"
     },
     {
       "api": "data-governance/data-products",
@@ -145,7 +149,7 @@
     },
     {
       "api": "data-governance/data-qualities",
-      "sha256": "4a3fb0c0a9033b4ae00617e5cb0009f7df3d4d485cd2beefc8fa038fb775cfe4"
+      "sha256": "f113520d2fd8e5f465fb832cf717328551137b6e4881fe3a6a7a9dfa43ce2ddb"
     },
     {
       "api": "data-governance/semantic-types",
@@ -221,7 +225,7 @@
     },
     {
       "api": "ml",
-      "sha256": "e1b4996510055a8a202d9b13d0de133c5a281b6f9b971a007ea1e37388638f99"
+      "sha256": "4c0d0e1bcc47f7efd38b0666adbb4a5a112320bd5d0d9cc5682798235cd91c84"
     },
     {
       "api": "notes",
@@ -233,7 +237,7 @@
     },
     {
       "api": "oauth",
-      "sha256": "f6c5ca057925b73b2777e0bd58c09b20a613d1f1253570b300cf240a8e527bac"
+      "sha256": "7dcc7c76f84dd839ff49c68832b89b765a32b270277f07f7c885999a898635f8"
     },
     {
       "api": "oauth-clients",
@@ -257,7 +261,7 @@
     },
     {
       "api": "reloads",
-      "sha256": "30d285431a9a5ee53e1821818b00c98f365af23a8becdddb34ea461e4acaf88d"
+      "sha256": "6f50623539093e70c5080983d05f2d1dd2167ea55655f999742be8ee755339cf"
     },
     {
       "api": "report-templates",
@@ -273,7 +277,7 @@
     },
     {
       "api": "scheduling/tasks",
-      "sha256": "7df6c4fe8769dec6b35b1fb2287cbe2b505dd4d73576cfca600bb2ebeefbee92"
+      "sha256": "17eb2510a10815d63b00384bc3f8e18f18b16b50382d5b94cc6df04e9a6d8b8e"
     },
     {
       "api": "sharing-tasks",
@@ -325,7 +329,7 @@
     },
     {
       "api": "webhooks",
-      "sha256": "067e4563f5f4030f662f7231a10333efe525028f21643929230a150fbf90673f"
+      "sha256": "b47fbf065c059df924eb350f876dae646a40b23dc994d3773e658506f3dedda7"
     },
     {
       "api": "workflows/automation-connections",
@@ -446,6 +450,10 @@
       "sha256": "82bb984938ca7b94cf989584c731c3829368c8682e8d82bc5c79fa9b3d0af301"
     },
     {
+      "path": "core/webhooks.json",
+      "sha256": "0784162a71f5f36d9b5b9e08e89c5f39fd34353cdfc1636a6f4dcdb43dc8caf7"
+    },
+    {
       "path": "csp-origins.json",
       "sha256": "75751fe6c567f564b0ad9295f03fbe1a5bb3780b64a1daa4412369b864e6a8b8"
     },
@@ -475,7 +483,7 @@
     },
     {
       "path": "data-governance/data-contracts.json",
-      "sha256": "2eb6b4880a2145e637523f615ef5ec497fb119de421651f970c8257517897417"
+      "sha256": "bc058e0acc615c41b100a8445585277d52862ea10d2f5f40499110382fa66571"
     },
     {
       "path": "data-governance/data-products.json",
@@ -483,7 +491,7 @@
     },
     {
       "path": "data-governance/data-qualities.json",
-      "sha256": "4a3fb0c0a9033b4ae00617e5cb0009f7df3d4d485cd2beefc8fa038fb775cfe4"
+      "sha256": "f113520d2fd8e5f465fb832cf717328551137b6e4881fe3a6a7a9dfa43ce2ddb"
     },
     {
       "path": "data-governance/semantic-types.json",
@@ -559,7 +567,7 @@
     },
     {
       "path": "ml.json",
-      "sha256": "e1b4996510055a8a202d9b13d0de133c5a281b6f9b971a007ea1e37388638f99"
+      "sha256": "4c0d0e1bcc47f7efd38b0666adbb4a5a112320bd5d0d9cc5682798235cd91c84"
     },
     {
       "path": "notes.json",
@@ -579,7 +587,7 @@
     },
     {
       "path": "oauth.json",
-      "sha256": "f6c5ca057925b73b2777e0bd58c09b20a613d1f1253570b300cf240a8e527bac"
+      "sha256": "7dcc7c76f84dd839ff49c68832b89b765a32b270277f07f7c885999a898635f8"
     },
     {
       "path": "questions.json",
@@ -595,7 +603,7 @@
     },
     {
       "path": "reloads.json",
-      "sha256": "30d285431a9a5ee53e1821818b00c98f365af23a8becdddb34ea461e4acaf88d"
+      "sha256": "6f50623539093e70c5080983d05f2d1dd2167ea55655f999742be8ee755339cf"
     },
     {
       "path": "report-templates.json",
@@ -611,7 +619,7 @@
     },
     {
       "path": "scheduling/tasks.json",
-      "sha256": "7df6c4fe8769dec6b35b1fb2287cbe2b505dd4d73576cfca600bb2ebeefbee92"
+      "sha256": "17eb2510a10815d63b00384bc3f8e18f18b16b50382d5b94cc6df04e9a6d8b8e"
     },
     {
       "path": "sharing-tasks.json",
@@ -663,7 +671,7 @@
     },
     {
       "path": "webhooks.json",
-      "sha256": "067e4563f5f4030f662f7231a10333efe525028f21643929230a150fbf90673f"
+      "sha256": "b47fbf065c059df924eb350f876dae646a40b23dc994d3773e658506f3dedda7"
     },
     {
       "path": "workflows/automation-connections.json",
